@@ -1,0 +1,322 @@
+import React, { useState } from 'react';
+import {
+    View,
+    ScrollView,
+    StyleSheet,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import {
+    Users,
+    MessageSquare,
+    FileText,
+} from 'lucide-react-native';
+import { colors } from '@/src/core/constants/Theme';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { doctorTranslations as t } from '@/src/i18n';
+import { horizontalScale, verticalScale } from '@/src/core/utils/scaling';
+
+// Import from new backend lib instead of Convex
+import {
+    useCurrentUser,
+    useDashboardStats,
+    useCoachInbox,
+    useClientsNeedingAttention,
+    useTodaysAppointments,
+    useWeeklyActivity,
+    useRecentActivity,
+    useSocket,
+} from '@/src/lib';
+import { usePhoneCall } from '@/src/hooks/usePhoneCall';
+
+// Extracted Components
+import {
+    DoctorHeader,
+    StatsGrid,
+    ClientsAttentionSection,
+    AppointmentsSection,
+    WeeklyActivitySection,
+    RecentActivitySection,
+    NotificationPanel,
+} from '@/src/features/home/component';
+import { Ionicons } from '@expo/vector-icons';
+
+
+
+
+// ============================================================
+// MAIN COMPONENT
+// ============================================================
+
+export default function DoctorDashboard() {
+    const insets = useSafeAreaInsets();
+    const router = useRouter();
+
+    // Ensure socket is connected for real-time updates
+    const { isConnected } = useSocket();
+
+    // Use new backend hooks instead of Convex
+    const { user } = useCurrentUser();
+    const { data: dashboardStats } = useDashboardStats();
+    const userName = user?.firstName || 'Doctor';
+
+    // Get real-time unread messages count
+    const { totalUnread, oldestUnread, isLoading: messagesLoading } = useCoachInbox();
+
+    // ============ CLIENTS NEEDING ATTENTION ============
+    const {
+        clients: attentionClients,
+        isLoading: attentionLoading,
+        isEmpty: noAttentionNeeded,
+        refetch: refetchAttention,
+    } = useClientsNeedingAttention(5);
+
+    // ============ TODAY'S APPOINTMENTS ============
+    const {
+        appointments,
+        isLoading: appointmentsLoading,
+        isEmpty: noAppointments,
+        refetch: refetchAppointments,
+    } = useTodaysAppointments(5);
+
+    // ============ PHONE CALL ============
+    const { callClient } = usePhoneCall();
+
+    // ============ WEEKLY ACTIVITY ============
+    const {
+        stats: weeklyStats,
+        chartData: weeklyChartData,
+        isLoading: weeklyLoading,
+        isEmpty: noWeeklyActivity,
+    } = useWeeklyActivity();
+
+    // ============ RECENT ACTIVITY ============
+    const {
+        activities: recentActivities,
+        isLoading: activitiesLoading,
+        isEmpty: noActivities,
+    } = useRecentActivity(5);
+
+    // Notification panel visibility state
+    const [showNotifications, setShowNotifications] = useState(false);
+
+    // Build dynamic subtext for unread messages card
+    const unreadSubtext = oldestUnread
+        ? `${oldestUnread.preview.slice(0, 25)}${oldestUnread.preview.length > 25 ? '...' : ''} • ${oldestUnread.relativeTime}`
+        : t.oldestMessage;
+
+    // Handle notification item press
+    const handleNotificationPress = (notification: any) => {
+        setShowNotifications(false);
+        if (notification.type === 'message') {
+            router.push('/doctor/messages' as any);
+        } else if (notification.type === 'weight_log') {
+            router.push('/doctor/clients' as any);
+        }
+    };
+
+    // --------------------------------------------------------
+    // NAVIGATION HANDLERS
+    // --------------------------------------------------------
+
+    const navigateTo = (view: string, _clientId?: string) => {
+        switch (view) {
+            case 'clients':
+                router.push('/doctor/clients' as any);
+                break;
+            case 'messages':
+                router.push('/doctor/messages' as any);
+                break;
+            case 'meal-plans':
+                router.push('/doctor/meals' as any);
+                break;
+            case 'analytics':
+                break;
+            case 'client-profile':
+                break;
+            default:
+                break;
+        }
+    };
+
+    // ============ ATTENTION SECTION HANDLERS ============
+    const handleClientPress = (clientId: string) => {
+        router.push({
+            pathname: '/doctor/client-profile' as any,
+            params: { id: clientId },
+        });
+    };
+
+    const handleMessagePress = (clientId: string) => {
+        router.push({
+            pathname: '/doctor/messages' as any,
+            params: { openChatWithClient: clientId },
+        });
+    };
+
+    const handleViewAllAttention = () => {
+        router.push({
+            pathname: '/doctor/clients' as any,
+            params: { filter: 'needs_attention' },
+        });
+    };
+
+    // --------------------------------------------------------
+    // STATS GRID DATA
+    // --------------------------------------------------------
+
+    const statsData = [
+        {
+            icon: <Users size={horizontalScale(22)} color="#16A34A" />,
+            iconBgColor: '#DCFCE7',
+            value: (dashboardStats as any)?.activeClients?.toString() || '0',
+            label: t.activeClients,
+            trend: (dashboardStats as any)?.activeClientsTrend !== undefined
+                ? `${(dashboardStats as any)?.activeClientsTrendUp ? '+' : '-'}${(dashboardStats as any)?.activeClientsTrend}% ${t.thisMonth}`
+                : undefined,
+            trendUp: (dashboardStats as any)?.activeClientsTrendUp ?? true,
+            onPress: () => navigateTo('clients'),
+        },
+        {
+            icon: <Ionicons name="scale" size={horizontalScale(22)} color="#F59E0B" />,
+            iconBgColor: '#FEF3C7',
+            value: (dashboardStats as any)?.unreviewedWeightLogs?.toString() || '0',
+            label: t.weightLogs,
+            subtext: t.needsReview,
+            onPress: () => navigateTo('clients'),
+        },
+        {
+            icon: <MessageSquare size={horizontalScale(22)} color="#2563EB" />,
+            iconBgColor: '#DBEAFE',
+            value: totalUnread?.toString() || '0',
+            label: t.unreadMessages,
+            subtext: unreadSubtext,
+            onPress: () => navigateTo('messages'),
+        },
+        {
+            icon: <FileText size={horizontalScale(22)} color="#DC2626" />,
+            iconBgColor: '#FEE2E2',
+            value: (dashboardStats as any)?.plansExpiring?.toString() || '0',
+            label: t.plansExpiring,
+            subtext: t.inNextDays,
+            onPress: () => navigateTo('meal-plans'),
+        },
+    ];
+
+    // --------------------------------------------------------
+    // RENDER
+    // --------------------------------------------------------
+
+    return (
+        <SafeAreaView edges={['left', 'right']} style={styles.container}>
+            <DoctorHeader
+                userName={userName}
+                userImage={user?.avatarUrl}
+                notificationCount={0}
+                onNotificationPress={() => setShowNotifications(true)}
+                style={{ paddingTop: insets.top }}
+            />
+
+            {/* Notification Panel Dropdown */}
+            <NotificationPanel
+                visible={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                onNotificationPress={handleNotificationPress}
+            />
+
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Quick Stats Grid */}
+                <StatsGrid stats={statsData} />
+
+                {/* Clients Needing Attention */}
+                <ClientsAttentionSection
+                    clients={attentionClients}
+                    isLoading={attentionLoading}
+                    isEmpty={noAttentionNeeded}
+                    onViewAll={handleViewAllAttention}
+                    onClientPress={handleClientPress}
+                    onMessagePress={handleMessagePress}
+                    onRetry={refetchAttention}
+                />
+
+                {/* Today's Appointments */}
+                <AppointmentsSection
+                    appointments={appointments}
+                    isLoading={appointmentsLoading}
+                    isEmpty={noAppointments}
+                    onAddPress={() => router.push('/doctor/calendar' as any)}
+                    onSchedulePress={() => router.push('/doctor/calendar' as any)}
+                    onAppointmentPress={() => router.push('/doctor/calendar' as any)}
+                    onStartCall={(apt: any) => {
+                        router.push('/doctor/calendar' as any);
+                    }}
+                    onStartPhoneCall={(apt: any) => {
+                        callClient(apt.clientId, apt.clientName, apt.clientPhone);
+                    }}
+                    onRetry={refetchAppointments}
+                />
+
+                {/* This Week's Activity */}
+                <WeeklyActivitySection
+                    chartData={weeklyChartData}
+                    stats={weeklyStats}
+                    isLoading={weeklyLoading}
+                    isEmpty={noWeeklyActivity}
+                    onViewAnalytics={() => navigateTo('analytics')}
+                />
+
+                {/* Recent Activity Feed */}
+                <RecentActivitySection
+                    activities={recentActivities}
+                    isLoading={activitiesLoading}
+                    isEmpty={noActivities}
+                    onSeeAll={() => router.push('/doctor/coach-activity-history' as any)}
+                    onActivityPress={(activity: any) => {
+                        // Navigate based on activity type
+                        if (activity.type === 'message') {
+                            router.push({
+                                pathname: '/doctor/messages' as any,
+                                params: activity.clientId ? { openChatWithClient: activity.clientId } : undefined,
+                            });
+                        } else if (activity.type === 'weight_log' || activity.type === 'meal_completed') {
+                            if (activity.clientId) {
+                                router.push({
+                                    pathname: '/doctor/client-profile' as any,
+                                    params: { id: activity.clientId },
+                                });
+                            } else {
+                                router.push('/doctor/clients' as any);
+                            }
+                        } else if (activity.clientId) {
+                            router.push({
+                                pathname: '/doctor/client-profile' as any,
+                                params: { id: activity.clientId },
+                            });
+                        }
+                    }}
+                />
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+// ============================================================
+// STYLES
+// ============================================================
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: colors.bgSecondary,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        padding: horizontalScale(12),
+        paddingBottom: verticalScale(32),
+    },
+});

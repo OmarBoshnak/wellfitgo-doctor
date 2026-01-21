@@ -5,11 +5,20 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "wellfitgodoctor",
+    "scheme": [
+      "wellfitgodoctor",
+      "appwrite-callback-69676fd2001b570962bd"
+    ],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.wellfitgodoctor",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "The app accesses your photos to let you set your profile picture.",
+        "NSCameraUsageDescription": "The app accesses your camera to let you take a profile picture.",
+        "NSMicrophoneUsageDescription": "The app accesses your microphone for video recording."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +28,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.wellfitgodoctor"
     },
     "web": {
       "output": "static",
@@ -27,6 +37,12 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you set your profile picture."
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -38,7 +54,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

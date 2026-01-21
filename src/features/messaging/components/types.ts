@@ -1,0 +1,29 @@
+// Message types for chat
+export interface ChatMessage {
+    id: string;
+    type: 'text' | 'audio' | 'system' | 'image' | 'meal_plan';
+    sender: 'me' | 'client';
+    senderId?: string; // Convex user ID for ownership checks
+    content: string;
+    timestamp: string;
+    status: 'sending' | 'sent' | 'read' | 'edited' | 'deleted';
+    isEdited?: boolean;
+    isDeleted?: boolean;
+    audioUri?: string;
+    audioDuration?: number; // milliseconds
+}
+
+export interface ChatConversation {
+    id: string;
+    conversationId?: string; // Convex conversation ID
+    clientId?: string; // Client user ID for profile navigation
+    name: string;
+    avatar: string;
+    isOnline: boolean;
+    unreadCount?: number;
+    lastMessage?: string;
+    lastMessageAt?: number;
+    isPinned?: boolean;
+    priority?: 'normal' | 'high' | 'urgent';
+}
+
