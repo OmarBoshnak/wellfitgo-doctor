@@ -4,6 +4,7 @@ import { ArrowRight, ArrowLeft, Scale, MessageSquare, Utensils, FileText, UserPl
 import { isRTL, doctorTranslations as t } from '@/src/i18n';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { colors } from '@/src/core/constants/Theme';
+import { Ionicons } from '@expo/vector-icons';
 
 // ============ TYPES ============
 type ActivityType =
@@ -45,7 +46,7 @@ function ActivityIcon({ type }: { type?: ActivityType }) {
 
     switch (type) {
         case "weight_log":
-            return <Scale size={iconSize} color="#3B82F6" />;
+            return <Ionicons name="scale" size={iconSize} color="#3B82F6" />;
         case "message":
             return <MessageSquare size={iconSize} color="#10B981" />;
         case "meal_completed":
@@ -117,7 +118,7 @@ export function RecentActivitySection({
     if (isEmpty || activities.length === 0) {
         return (
             <View style={styles.sectionCard}>
-                <Text style={[styles.sectionTitleSmall, { textAlign: isRTL ? 'left' : 'right' }]}>
+                <Text style={[styles.sectionTitleSmall, { textAlign: isRTL ? 'right' : 'left' }]}>
                     {t.recentActivity}
                 </Text>
                 <EmptyState />
@@ -127,7 +128,7 @@ export function RecentActivitySection({
 
     return (
         <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitleSmall, { textAlign: isRTL ? 'left' : 'right' }]}>
+            <Text style={[styles.sectionTitleSmall, { textAlign: isRTL ? 'right' : 'left' }]}>
                 {t.recentActivity}
             </Text>
 
@@ -147,7 +148,7 @@ export function RecentActivitySection({
                     </View>
 
                     {/* Activity Content */}
-                    <View style={[styles.activityContent, { alignItems: isRTL ? 'flex-start' : 'flex-end' }]}>
+                    <View style={[styles.activityContent, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
                         <Text
                             style={[styles.activityText, { textAlign: isRTL ? 'right' : 'left' }]}
                             numberOfLines={2}
@@ -175,8 +176,8 @@ export function RecentActivitySection({
                     style={[styles.viewAnalyticsLink, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                     onPress={onSeeAll}
                 >
-                    <Text style={styles.viewAnalyticsText}>{t.seeAllActivity}</Text>
                     <DirectionalArrow />
+                    <Text style={styles.viewAnalyticsText}>{t.seeAllActivity}</Text>
                 </TouchableOpacity>
             )}
         </View>

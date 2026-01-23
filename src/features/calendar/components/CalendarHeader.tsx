@@ -17,7 +17,7 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = ({ style, onEditPre
     const router = useRouter();
 
     return (
-        <View style={[styles.container, { flexDirection: isRTL ? 'row-reverse' : 'row' }, style]}>
+        <View style={[styles.container, { flexDirection: isRTL ? 'row' : 'row-reverse' }, style]}>
             <TouchableOpacity
                 onPress={() => router.back()}
             >

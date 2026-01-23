@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
         paddingVertical: verticalScale(8),
     },
     toggleContainer: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         backgroundColor: colors.bgSecondary,
         borderRadius: horizontalScale(25),
         padding: horizontalScale(4),

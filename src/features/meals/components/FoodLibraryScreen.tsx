@@ -108,16 +108,16 @@ const FoodItemRow = ({ item, isSelected, onToggle }: FoodItemRowProps) => (
             {isSelected && <Check size={horizontalScale(14)} color="#FFFFFF" />}
         </View>
 
+        {/* Calories */}
+        <View style={styles.caloriesContainer}>
+            <Text style={styles.caloriesText}>{item.calories} {t.cal}</Text>
+        </View>
         {/* Food Info */}
         <View style={styles.foodInfo}>
             <Text style={styles.foodNameAr}>{item.nameAr}</Text>
             <Text style={styles.foodNameEn}>{item.nameEn}</Text>
         </View>
 
-        {/* Calories */}
-        <View style={styles.caloriesContainer}>
-            <Text style={styles.caloriesText}>{item.calories} {t.cal}</Text>
-        </View>
     </TouchableOpacity>
 );
 
@@ -330,6 +330,10 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top }]}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <BackArrow />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>{t.addFood}</Text>
                 <TouchableOpacity onPress={handleDone} activeOpacity={0.9}>
                     <LinearGradient
                         colors={gradients.primary}
@@ -343,17 +347,11 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
                     </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>{t.addFood}</Text>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <BackArrow />
-                </TouchableOpacity>
-
             </View>
 
             {/* Search Bar */}
             <View style={styles.searchContainer}>
                 <View style={styles.searchInputWrapper}>
-                    <Search size={horizontalScale(20)} color={colors.primaryDark} style={styles.searchIcon} />
                     <TextInput
                         style={styles.searchInput}
                         placeholder={t.searchPlaceholder}
@@ -361,6 +359,7 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
+                    <Search size={horizontalScale(20)} color={colors.primaryDark} style={styles.searchIcon} />
                 </View>
             </View>
 
@@ -663,6 +662,7 @@ const styles = StyleSheet.create({
     filterScrollContent: {
         paddingHorizontal: horizontalScale(16),
         gap: horizontalScale(8),
+        flexDirection: 'row-reverse'
     },
     filterTabActive: {
         paddingHorizontal: horizontalScale(20),
@@ -737,6 +737,7 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
         marginTop: verticalScale(16),
         marginBottom: verticalScale(8),
+        textAlign: 'right',
     },
     // Food Item Row
     foodItemRow: {
@@ -746,7 +747,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: horizontalScale(4),
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
-        gap: horizontalScale(16),
+        gap: horizontalScale(15),
     },
     checkbox: {
         width: horizontalScale(24),
@@ -768,13 +769,13 @@ const styles = StyleSheet.create({
         fontSize: ScaleFontSize(14),
         fontWeight: '500',
         color: colors.textPrimary,
-        textAlign: 'left',
+        textAlign: 'right',
     },
     foodNameEn: {
         fontSize: ScaleFontSize(12),
         color: colors.textSecondary,
         marginTop: verticalScale(2),
-        textAlign: 'left',
+        textAlign: 'right',
     },
     caloriesContainer: {
         alignItems: 'flex-end',

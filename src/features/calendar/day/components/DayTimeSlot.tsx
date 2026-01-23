@@ -21,14 +21,6 @@ export const DayTimeSlot: React.FC<DayTimeSlotProps> = ({
 
     return (
         <View style={[styles.container, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            {/* Time Label */}
-            <Text style={[
-                styles.timeText,
-                { textAlign: isRTL ? 'right' : 'left' }
-            ]}>
-                {hourLabel}
-            </Text>
-
             {/* Slot Content */}
             <View style={[
                 styles.slotContent,
@@ -39,9 +31,6 @@ export const DayTimeSlot: React.FC<DayTimeSlotProps> = ({
                         styles.emptySlot,
                         { flexDirection: isRTL ? 'row' : 'row-reverse' }
                     ]}>
-                        <Text style={styles.noAppointmentText}>
-                            {t.noAppointments}
-                        </Text>
                         <TouchableOpacity
                             style={[
                                 styles.scheduleButton,
@@ -52,9 +41,22 @@ export const DayTimeSlot: React.FC<DayTimeSlotProps> = ({
                             <Plus size={horizontalScale(16)} color="#4d6efe" />
                             <Text style={styles.scheduleText}>{t.schedule}</Text>
                         </TouchableOpacity>
+
+                        <Text style={styles.noAppointmentText}>
+                            {t.noAppointments}
+                        </Text>
                     </View>
                 )}
             </View>
+
+            {/* Time Label */}
+            <Text style={[
+                styles.timeText,
+                { textAlign: isRTL ? 'right' : 'left' }
+            ]}>
+                {hourLabel}
+            </Text>
+
         </View>
     );
 };

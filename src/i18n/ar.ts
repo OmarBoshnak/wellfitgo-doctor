@@ -149,8 +149,8 @@ export const doctorTranslations = {
     inNextDays: isRTL ? 'خلال 7 أيام' : 'In next 7 days',
 
     // Section Titles
-    needsAttention: isRTL ? 'يحتاج اهتمام 🚨' : 'Needs Attention 🚨',
-    todaysAppointments: isRTL ? 'مواعيد اليوم 📅' : "Today's Appointments 📅",
+    needsAttention: isRTL ? '🚨 يحتاج اهتمام' : 'Needs Attention 🚨',
+    todaysAppointments: isRTL ? '📅 مواعيد اليوم' : "Today's Appointments 📅",
     quickActions: isRTL ? 'إجراءات سريعة' : 'Quick Actions',
     thisWeeksActivity: isRTL ? 'نشاط هذا الأسبوع' : "This Week's Activity",
     recentActivity: isRTL ? 'النشاط الأخير' : 'Recent Activity',

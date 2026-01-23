@@ -27,7 +27,7 @@ export const DayHeader: React.FC<DayHeaderProps> = ({ days, isWeekView }) => {
             {/* Day columns */}
             <View style={[
                 styles.daysContainer,
-                { flexDirection: isRTL ? 'row-reverse' : 'row' }
+                { flexDirection: isRTL ? 'row' : 'row-reverse' }
             ]}>
                 {displayDays.map((day, index) => (
                     <View key={index} style={styles.dayColumn}>

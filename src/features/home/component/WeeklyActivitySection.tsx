@@ -106,12 +106,12 @@ export function WeeklyActivitySection({
 
     return (
         <View style={styles.sectionCard}>
-            <Text style={[styles.sectionTitleSmall, { textAlign: isRTL ? 'left' : 'right' }]}>
+            <Text style={[styles.sectionTitleSmall, { textAlign: isRTL ? 'right' : 'left' }]}>
                 {t.thisWeeksActivity}
             </Text>
 
             {/* Bar Chart */}
-            <View style={[styles.chartContainer, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.chartContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 {chartData.map((height, i) => (
                     <View key={i} style={styles.chartBarWrapper}>
                         <View style={[styles.chartBar, { height: `${Math.max(height, 5)}%` }]} />

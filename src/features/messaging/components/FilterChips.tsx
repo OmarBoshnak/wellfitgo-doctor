@@ -68,7 +68,7 @@ export default function FilterChips({ activeFilter, onFilterChange }: Props) {
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: 'row-reverse', // RTL: Start from right
+        flexDirection: 'row', // RTL: Start from right
         paddingHorizontal: horizontalScale(16),
         paddingBottom: verticalScale(16),
         gap: horizontalScale(12),

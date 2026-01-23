@@ -1,12 +1,12 @@
 /**
- * Diet Details Hook - Mock Data
+ * Diet Details Hook - Backend Data
  *
- * Fetches a full diet plan by ID from Mock Data
+ * Fetches a full diet plan by ID from Backend
  */
 
 import { useState, useEffect } from "react";
 import { DietPlan } from "./useDietsByType";
-import { MOCK_DIET_PLANS } from "../data/mockData";
+import { plansService } from "@/src/shared/services";
 
 // ============ HOOK ============
 
@@ -27,15 +27,8 @@ export function useDietDetails(id: string | undefined) {
         const fetchPlan = async () => {
             setIsLoading(true);
             try {
-                // Simulate network delay
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Find in mock data
-                // Cast to any because MOCK_DIET_PLANS might have slightly different type definition in mock file vs here
-                // but checking structure it seems compatible.
-                const foundPlan = (MOCK_DIET_PLANS as DietPlan[]).find(p => p.id === id || p._id === id);
-
-                setPlan(foundPlan);
+                const fetchedPlan = await plansService.getDietPlan(id);
+                setPlan(fetchedPlan as DietPlan);
             } catch (error) {
                 console.error('Error fetching diet plan:', error);
                 setPlan(undefined);

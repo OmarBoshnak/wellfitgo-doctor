@@ -100,10 +100,10 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
 
                     {/* Header */}
                     <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.headerTitle}>{t.createCategory}</Text>
                         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
                             <X size={horizontalScale(24)} color={colors.textSecondary} />
                         </TouchableOpacity>
+                        <Text style={styles.headerTitle}>{t.createCategory}</Text>
                     </View>
 
                     {/* Error Message */}
@@ -121,7 +121,7 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
                     >
                         {/* Icon Selection */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {t.chooseIcon}
                             </Text>
                             <View style={styles.iconGrid}>
@@ -145,7 +145,7 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
                         <View style={styles.formSection}>
                             {/* English Name */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {t.categoryNameEn}
                                 </Text>
                                 <TextInput
@@ -160,7 +160,7 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
 
                             {/* Arabic Name */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {t.categoryNameAr}
                                 </Text>
                                 <TextInput
@@ -175,7 +175,7 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
 
                             {/* Description */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {t.description}
                                 </Text>
                                 <TextInput
@@ -195,14 +195,6 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
                         {/* Toggle Switch Section */}
                         <View style={styles.toggleSection}>
                             <View style={[styles.toggleCard, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                <View style={styles.toggleInfo}>
-                                    <Text style={[styles.toggleTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
-                                        {t.baseCalorieRanges}
-                                    </Text>
-                                    <Text style={[styles.toggleSubtitle, { textAlign: isRTL ? 'left' : 'right' }]}>
-                                        {t.autoGenerate}
-                                    </Text>
-                                </View>
                                 <Switch
                                     value={autoGenerateRanges}
                                     onValueChange={setAutoGenerateRanges}
@@ -212,6 +204,14 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
                                     disabled={isLoading}
                                     style={{ transform: [{ rotate: '180deg' }] }}
                                 />
+                                <View style={styles.toggleInfo}>
+                                    <Text style={[styles.toggleTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                        {t.baseCalorieRanges}
+                                    </Text>
+                                    <Text style={[styles.toggleSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                        {t.autoGenerate}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
 
@@ -221,9 +221,6 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
 
                     {/* Footer */}
                     <View style={[styles.footer, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <TouchableOpacity style={styles.cancelButton} onPress={handleClose} disabled={isLoading}>
-                            <Text style={styles.cancelButtonText}>{t.cancel}</Text>
-                        </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.createButtonWrapper}
                             onPress={handleCreate}
@@ -254,6 +251,10 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
+                        <TouchableOpacity style={styles.cancelButton} onPress={handleClose} disabled={isLoading}>
+                            <Text style={styles.cancelButtonText}>{t.cancel}</Text>
+                        </TouchableOpacity>
+
                     </View>
                 </View>
             </View>
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     },
     // Icon Grid
     iconGrid: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         flexWrap: 'wrap',
         gap: horizontalScale(12),
     },

@@ -178,13 +178,12 @@ export default function MessagesScreen() {
     if (isLoading) {
         return (
             <GestureHandlerRootView style={{ flex: 1 }}>
-                <SafeAreaView edges={['left', 'right']} style={styles.container}>
-                    <View style={[styles.header, { paddingTop: insets.top }]}>
-                        <Text style={styles.title}>{t.title}</Text>
-                    </View>
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={colors.primaryDark} />
-                        <Text style={styles.loadingText}>{t.loading}</Text>
+                <SafeAreaView edges={['right', 'left']} style={styles.loadingcontainer}>
+                    <View style={{ paddingTop: insets.top }}>
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={colors.primaryDark} />
+                            <Text style={styles.loadingText}>{t.loading}</Text>
+                        </View>
                     </View>
                 </SafeAreaView>
             </GestureHandlerRootView>
@@ -264,6 +263,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.bgPrimary,
     },
+    loadingcontainer: {
+        flex: 1,
+        backgroundColor: colors.bgPrimary,
+        alignItems: 'center'
+    },
+
     header: {
         backgroundColor: colors.bgPrimary,
         paddingHorizontal: horizontalScale(16),
@@ -272,7 +277,7 @@ const styles = StyleSheet.create({
         borderBottomColor: colors.border,
     },
     headerTop: {
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingVertical: verticalScale(8),

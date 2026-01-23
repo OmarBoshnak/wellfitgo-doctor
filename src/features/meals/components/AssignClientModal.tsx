@@ -6,6 +6,8 @@ import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { isRTL } from '@/src/core/constants/translation';
 import { colors, gradients } from '@/src/core/constants/Theme';
+import { plansService } from '@/src/shared/services';
+
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -110,13 +112,11 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
             if (visible) {
                 try {
                     setIsLoading(true);
-                    // Mock data fetch
-                    await new Promise(resolve => setTimeout(resolve, 600));
 
-                    const { MOCK_ASSIGNMENT_CLIENTS } = require('../data/mockData');
+                    const clientsData = await plansService.getClientsForAssignment();
 
                     // Map AssignmentClient to Client interface
-                    const mappedClients: Client[] = MOCK_ASSIGNMENT_CLIENTS.map((c: any) => {
+                    const mappedClients: Client[] = clientsData.map((c: any) => {
                         const nameParts = c.name.split(' ');
                         return {
                             id: c.id,

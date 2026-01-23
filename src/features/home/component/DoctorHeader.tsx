@@ -63,19 +63,6 @@ const DoctorHeader: React.FC<DoctorHeaderProps> = ({
 
                 {/* Action Buttons */}
                 <View style={[styles.actions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    {/* Search Button */}
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => setShowSearch(!showSearch)}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons
-                            name="search-outline"
-                            size={22}
-                            color={colors.textSecondary}
-                        />
-                    </TouchableOpacity>
-
                     {/* Notifications Button */}
                     <TouchableOpacity
                         style={styles.iconButton}
@@ -94,6 +81,20 @@ const DoctorHeader: React.FC<DoctorHeaderProps> = ({
                                 </Text>
                             </View>
                         )}
+                    </TouchableOpacity>
+
+
+                    {/* Search Button */}
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => setShowSearch(!showSearch)}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons
+                            name="search-outline"
+                            size={22}
+                            color={colors.textSecondary}
+                        />
                     </TouchableOpacity>
 
                 </View>

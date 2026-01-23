@@ -109,7 +109,7 @@ export default function MessageItem({ message, onPress, onArchive, onDelete }: P
             friction={2}
         >
             <TouchableOpacity
-                style={[styles.container, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+                style={[styles.container, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                 onPress={onPress}
                 activeOpacity={0.7}
             >
@@ -119,21 +119,21 @@ export default function MessageItem({ message, onPress, onArchive, onDelete }: P
                 {/* Content - RTL Layout: Avatar on right, text on left */}
                 <View style={styles.contentContainer}>
                     <View style={[styles.headerRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <Text style={[styles.timestamp, { textAlign: isRTL ? 'right' : 'left' }]}>{message.timestamp}</Text>
                         <Text
-                            style={[styles.name, isUnread && styles.nameUnread, { textAlign: isRTL ? 'left' : 'right' }]}
+                            style={[styles.name, isUnread && styles.nameUnread, { textAlign: isRTL ? 'right' : 'left' }]}
                             numberOfLines={1}
                         >
                             {message.name}
                         </Text>
-                        <Text style={[styles.timestamp, { textAlign: isRTL ? 'left' : 'right' }]}>{message.timestamp}</Text>
                     </View>
-                    <View style={[styles.messageRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <View style={[styles.messageRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                         {isUnread && (
                             <View style={styles.unreadBadge}>
                                 <Text style={styles.unreadCount}>{message.unreadCount}</Text>
                             </View>
                         )}
-                        <Text style={[styles.lastMessage, { textAlign: isRTL ? 'left' : 'right' }]} numberOfLines={2}>
+                        <Text style={[styles.lastMessage, { textAlign: isRTL ? 'right' : 'left' }]} numberOfLines={2}>
                             {message.lastMessage}
                         </Text>
                     </View>
@@ -237,7 +237,8 @@ const styles = StyleSheet.create({
         color: '#AAB8C5',
     },
     messageRow: {
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         gap: horizontalScale(8),
     },
     lastMessage: {

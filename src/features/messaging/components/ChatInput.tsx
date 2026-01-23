@@ -2,18 +2,13 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import EmojiPicker from 'rn-emoji-keyboard';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import AttachmentSheet, { AttachmentResult } from './AttachmentSheet';
 import MealPlanSelectorSheet, { MealPlan } from './MealPlanSelectorSheet';
 import { colors } from '@/src/core/constants/Theme';
 
-// Lazy import expo-av to avoid crash if native module not available
-let Audio: any = null;
-try {
-    Audio = require('expo-av').Audio;
-} catch (e) {
-    console.log('expo-av not available, voice recording disabled');
-}
+import { Audio } from 'expo-av';
 
 // Arabic translations
 const t = {
@@ -51,6 +46,7 @@ export default function ChatInput({
     const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
     const [showMealPlanSheet, setShowMealPlanSheet] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
     // Refs for recording
     const recordingRef = useRef<any>(null);
@@ -145,12 +141,6 @@ export default function ChatInput({
 
     // Start recording
     const startRecording = async () => {
-        if (!Audio) {
-            setPermissionDenied(true);
-            console.log('Audio module not available');
-            return;
-        }
-
         try {
             console.log('Requesting audio permissions...');
             const { status } = await Audio.requestPermissionsAsync();
@@ -413,8 +403,11 @@ export default function ChatInput({
                         )}
 
                         {/* Emoji Button */}
-                        <TouchableOpacity style={styles.emojiButton}>
-                            <MaterialIcons name="sentiment-satisfied-alt" size={24} color="#9CA3AF" />
+                        <TouchableOpacity
+                            style={styles.emojiButton}
+                            onPress={() => setShowEmojiPicker(true)}
+                        >
+                            <MaterialIcons name="sentiment-satisfied-alt" size={24} color={showEmojiPicker ? colors.primaryDark : "#9CA3AF"} />
                         </TouchableOpacity>
 
                         {/* Input Field */}
@@ -461,13 +454,25 @@ export default function ChatInput({
                 onClose={() => setShowMealPlanSheet(false)}
                 onSelect={handleMealPlanSelect}
             />
+
+            {/* Emoji Picker */}
+            <EmojiPicker
+                onEmojiSelected={(emoji) => {
+                    setText(prev => prev + emoji.emoji);
+                }}
+                open={showEmojiPicker}
+                onClose={() => setShowEmojiPicker(false)}
+                enableSearchBar
+                enableRecentlyUsed
+                categoryPosition="top"
+            />
         </>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        flexDirection: 'row-reverse', // RTL
+        flexDirection: 'row', // RTL
         alignItems: 'center',
         paddingHorizontal: horizontalScale(12),
         paddingTop: verticalScale(12),

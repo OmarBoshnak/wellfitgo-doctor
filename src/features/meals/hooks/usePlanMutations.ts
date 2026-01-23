@@ -1,10 +1,11 @@
 /**
- * Plan Mutations Hook - Mock Data
+ * Plan Mutations Hook
  *
- * Provides mutations for creating and updating diet plans and weekly plans (Mocked)
+ * Provides mutations for creating and updating diet plans and weekly plans using plansService.
  */
 
 import { useState, useCallback } from "react";
+import { plansService } from "@/src/shared/services";
 
 // ============ TYPE DEFINITIONS ============
 
@@ -112,12 +113,11 @@ export function usePlanMutations() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    // Helper to wrap API calls with auth token and loading state
+    // Helper to wrap API calls with loading state
     const mutate = useCallback(async (fn: () => Promise<any>) => {
         setIsLoading(true);
         setError(null);
         try {
-            await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
             const result = await fn();
             return result;
         } catch (err) {
@@ -131,36 +131,32 @@ export function usePlanMutations() {
     // Wrapped mutations with loading/error handling
     const createDietPlan = useCallback(async (args: CreateDietPlanArgs) => {
         return mutate(async () => {
-            console.log('[MockMutation] createDietPlan:', args);
-            return { id: 'mock_new_plan_' + Date.now() };
+            // Cast to any to avoid type mismatch with service types if they differ slightly
+            return plansService.createDietPlan(args as any);
         });
     }, [mutate]);
 
     const updateDietPlan = useCallback(async (args: UpdateDietPlanArgs) => {
         return mutate(async () => {
-            console.log('[MockMutation] updateDietPlan:', args);
-            return { success: true };
+            return plansService.updateDietPlan(args as any);
         });
     }, [mutate]);
 
     const createWeeklyPlan = useCallback(async (args: CreateWeeklyPlanArgs) => {
         return mutate(async () => {
-            console.log('[MockMutation] createWeeklyPlan:', args);
-            return { id: 'mock_weekly_plan_' + Date.now() };
+            return plansService.createWeeklyPlan(args as any);
         });
     }, [mutate]);
 
     const updateWeeklyPlan = useCallback(async (args: UpdateWeeklyPlanArgs) => {
         return mutate(async () => {
-            console.log('[MockMutation] updateWeeklyPlan:', args);
-            return { success: true };
+            return plansService.updateWeeklyPlan(args as any);
         });
     }, [mutate]);
 
     const deleteDietPlan = useCallback(async (id: string) => {
         return mutate(async () => {
-            console.log('[MockMutation] deleteDietPlan:', id);
-            return { success: true };
+            return plansService.deleteDietPlan(id);
         });
     }, [mutate]);
 
@@ -171,15 +167,19 @@ export function usePlanMutations() {
 
     const createDietCategory = useCallback(async (args: CreateDietCategoryArgs) => {
         return mutate(async () => {
-            console.log('[MockMutation] createDietCategory:', args);
-            return { id: 'mock_cat_' + Date.now() };
+            return plansService.createDietCategory(args);
         });
     }, [mutate]);
 
     const deleteDietCategory = useCallback(async (id: string) => {
         return mutate(async () => {
-            console.log('[MockMutation] deleteDietCategory:', id);
-            return { success: true };
+            return plansService.deleteDietCategory(id);
+        });
+    }, [mutate]);
+
+    const updateDietCategory = useCallback(async (id: string, args: Partial<CreateDietCategoryArgs>) => {
+        return mutate(async () => {
+            return plansService.updateDietCategory(id, args);
         });
     }, [mutate]);
 
@@ -190,6 +190,7 @@ export function usePlanMutations() {
         createWeeklyPlan,
         updateWeeklyPlan,
         createDietCategory,
+        updateDietCategory,
         deleteDietCategory,
         deleteDraft,
         isLoading,

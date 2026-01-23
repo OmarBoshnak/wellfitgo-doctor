@@ -1,11 +1,11 @@
 /**
- * Diets By Type Hook - Mock Data
+ * Diets By Type Hook - Backend Data
  * 
  * Fetches diet plans filtered by type
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { MOCK_DIET_PLANS } from '../data/mockData';
+import { plansService } from '@/src/shared/services';
 import { MealData } from './usePlanMutations';
 
 // ============ TYPES ============
@@ -53,27 +53,11 @@ export function useDietsByType(type: DietType): UseDietsByTypeResult {
     const fetchDiets = useCallback(async () => {
         try {
             setIsLoading(true);
-
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 700));
-
-            const allPlans = MOCK_DIET_PLANS as DietPlan[];
-
-            // Filter logic
-            let filteredDiets = allPlans;
-            if (type !== 'all') {
-                if (type.startsWith('custom_')) {
-                    // For custom types, usually filtered by category association or exact type match in real backend
-                    // Here we just mock filtering by type property
-                    filteredDiets = allPlans;
-                } else {
-                    filteredDiets = allPlans.filter((d) => d.type === type);
-                }
-            }
-
-            setDiets(filteredDiets);
+            const fetchedDiets = await plansService.getDietsByType(type);
+            setDiets(fetchedDiets as DietPlan[]);
         } catch (error) {
             console.error('Error fetching diets by type:', error);
+            setDiets([]);
         } finally {
             setIsLoading(false);
         }

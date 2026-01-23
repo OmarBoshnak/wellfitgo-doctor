@@ -40,51 +40,13 @@ import { ProfileService, DoctorProfile, UpdateProfileData } from '@/src/shared/s
 // TRANSLATIONS
 // =============================================================================
 
-const t = {
-    title: isRTL ? 'تعديل الملف الشخصي' : 'Edit Profile',
-    save: isRTL ? 'حفظ' : 'Save',
-    saveChanges: isRTL ? 'حفظ التغييرات' : 'Save Changes',
-    changePhoto: isRTL ? 'تغيير الصورة' : 'Change Photo',
-    photoHint: isRTL ? 'JPG أو PNG، بحد أقصى 2MB' : 'JPG or PNG, max 2MB',
+import { getDoctorProfileTranslations } from '@/src/features/settings/locales/doctor-profile.locale';
 
-    // Personal Information
-    personalInfo: isRTL ? 'المعلومات الشخصية' : 'Personal Information',
-    fullName: isRTL ? 'الاسم الكامل' : 'Full Name',
-    fullNamePlaceholder: isRTL ? 'أدخل اسمك الكامل' : 'Enter your full name',
-    professionalTitle: isRTL ? 'المسمى المهني' : 'Professional Title',
-    professionalTitlePlaceholder: isRTL ? 'مثال: أخصائي تغذية' : 'e.g. Nutritionist',
-    bio: isRTL ? 'نبذة عني' : 'Bio',
-    bioPlaceholder: isRTL ? 'أخبر العملاء عن خبراتك...' : 'Tell clients about your expertise...',
-    email: isRTL ? 'البريد الإلكتروني' : 'Email Address',
-    phone: isRTL ? 'رقم الهاتف' : 'Phone Number',
+// =============================================================================
+// TRANSLATIONS
+// =============================================================================
 
-    // Availability
-    availability: isRTL ? 'أوقات العمل' : 'Availability',
-    resetDefault: isRTL ? 'إعادة تعيين' : 'Reset Default',
-    notAvailable: isRTL ? 'غير متاح' : 'Not Available',
-
-    // Days
-    days: {
-        sunday: isRTL ? 'الأحد' : 'Sunday',
-        monday: isRTL ? 'الإثنين' : 'Monday',
-        tuesday: isRTL ? 'الثلاثاء' : 'Tuesday',
-        wednesday: isRTL ? 'الأربعاء' : 'Wednesday',
-        thursday: isRTL ? 'الخميس' : 'Thursday',
-        friday: isRTL ? 'الجمعة' : 'Friday',
-        saturday: isRTL ? 'السبت' : 'Saturday',
-    },
-
-    // Alerts
-    success: isRTL ? 'تم بنجاح' : 'Success',
-    profileUpdated: isRTL ? 'تم تحديث الملف الشخصي بنجاح' : 'Profile updated successfully',
-    error: isRTL ? 'خطأ' : 'Error',
-    failedToUpdate: isRTL ? 'فشل تحديث الملف الشخصي' : 'Failed to update profile',
-    failedToLoad: isRTL ? 'فشل تحميل الملف الشخصي' : 'Failed to load profile',
-    permissionNeeded: isRTL ? 'تحتاج إذن' : 'Permission needed',
-    photoPermission: isRTL ? 'نحتاج إذن للوصول للصور' : 'We need permission to access your photos',
-    saving: isRTL ? 'جاري الحفظ...' : 'Saving...',
-    loading: isRTL ? 'جاري التحميل...' : 'Loading...',
-};
+const t = getDoctorProfileTranslations();
 
 // =============================================================================
 // TYPES

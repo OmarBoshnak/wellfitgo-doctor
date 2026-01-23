@@ -1,61 +1,63 @@
+/**
+ * Foods Hook - Backend Data
+ * 
+ * Provides hooks for fetching and managing food items
+ */
+
 import { useState, useCallback, useEffect } from 'react';
+import { foodsService, type FoodItem } from '@/src/shared/services/foods.service';
 
-// Actually I will just use Math.random for now to be safe as I don't know if helper exists.
-const generateIdSafe = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+// Re-export Food type for convenience
+export type Food = FoodItem;
 
-export interface Food {
-    _id: string;
-    nameAr: string;
-    nameEn: string;
-    calories: number;
-    category: string;
-}
-
-const MOCK_FOODS: Food[] = [
-    { _id: '1', nameAr: 'تفاحة', nameEn: 'Apple', calories: 95, category: 'fruits' },
-    { _id: '2', nameAr: 'موزة', nameEn: 'Banana', calories: 105, category: 'fruits' },
-    { _id: '3', nameAr: 'صدر دجاج', nameEn: 'Chicken Breast', calories: 165, category: 'protein' },
-    { _id: '4', nameAr: 'أرز أبيض', nameEn: 'White Rice', calories: 130, category: 'carbs' },
-    { _id: '5', nameAr: 'حليب', nameEn: 'Milk', calories: 150, category: 'dairy' },
-];
-
+/**
+ * Hook for fetching foods with filtering and pagination
+ */
 export const useFoods = (categoryFilter?: string, searchQuery?: string, limit: number = 20) => {
     const [foods, setFoods] = useState<Food[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(false);
+    const [error, setError] = useState<Error | undefined>(undefined);
 
     const fetchFoods = useCallback(async () => {
         setIsLoading(true);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setError(undefined);
 
-        let filtered = [...MOCK_FOODS];
-
-        if (categoryFilter) {
-            filtered = filtered.filter(f => f.category === categoryFilter);
+        try {
+            const result = await foodsService.getFoods({
+                category: categoryFilter,
+                search: searchQuery,
+            });
+            setFoods(result);
+            setHasMore(result.length >= limit);
+        } catch (err) {
+            console.error('Error fetching foods:', err);
+            setError(err as Error);
+            setFoods([]);
+        } finally {
+            setIsLoading(false);
         }
-
-        if (searchQuery) {
-            const q = searchQuery.toLowerCase();
-            filtered = filtered.filter(f =>
-                f.nameAr.toLowerCase().includes(q) ||
-                f.nameEn.toLowerCase().includes(q)
-            );
-        }
-
-        setFoods(filtered);
-        setIsLoading(false);
-        setHasMore(false); // Mock data is small
-    }, [categoryFilter, searchQuery]);
+    }, [categoryFilter, searchQuery, limit]);
 
     useEffect(() => {
         fetchFoods();
     }, [fetchFoods]);
 
-    const fetchMore = async () => {
-        // No op for mock
-    };
+    const fetchMore = useCallback(async () => {
+        if (isLoadingMore || !hasMore) return;
+
+        setIsLoadingMore(true);
+        try {
+            // For now, no real pagination - backend returns all matching
+            // In the future, add offset/cursor support
+            setHasMore(false);
+        } catch (err) {
+            console.error('Error fetching more foods:', err);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [isLoadingMore, hasMore]);
 
     return {
         foods,
@@ -63,19 +65,119 @@ export const useFoods = (categoryFilter?: string, searchQuery?: string, limit: n
         isLoadingMore,
         hasMore,
         fetchMore,
+        error,
+        refetch: fetchFoods,
     };
 };
 
+/**
+ * Hook for fetching commonly used foods
+ */
 export const useCommonlyUsedFoods = () => {
-    // Return a subset of mock foods
-    return MOCK_FOODS.slice(0, 3);
+    const [foods, setFoods] = useState<Food[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCommonlyUsed = async () => {
+            try {
+                const result = await foodsService.getCommonlyUsedFoods();
+                setFoods(result);
+            } catch (err) {
+                console.error('Error fetching commonly used foods:', err);
+                setFoods([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchCommonlyUsed();
+    }, []);
+
+    return foods;
 };
 
+/**
+ * Hook for creating custom foods
+ */
 export const useCreateCustomFood = () => {
-    return async (foodData: Omit<Food, '_id'>) => {
-        // Simulate creation
-        await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Created custom food:', foodData);
-        return generateIdSafe();
+    const [isCreating, setIsCreating] = useState(false);
+    const [error, setError] = useState<Error | undefined>(undefined);
+
+    const createFood = useCallback(async (foodData: {
+        nameAr: string;
+        nameEn: string;
+        calories: number;
+        category: string;
+        proteinGrams?: number;
+        carbsGrams?: number;
+        fatGrams?: number;
+    }): Promise<string | null> => {
+        setIsCreating(true);
+        setError(undefined);
+
+        try {
+            const result = await foodsService.createFood(foodData as any);
+            return result.id;
+        } catch (err) {
+            console.error('Error creating custom food:', err);
+            setError(err as Error);
+            return null;
+        } finally {
+            setIsCreating(false);
+        }
+    }, []);
+
+    return createFood;
+};
+
+/**
+ * Hook for food mutations (update, delete)
+ */
+export const useFoodMutations = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<Error | undefined>(undefined);
+
+    const updateFood = useCallback(async (id: string, data: Partial<{
+        nameAr: string;
+        nameEn: string;
+        calories: number;
+        category: string;
+    }>): Promise<boolean> => {
+        setIsLoading(true);
+        setError(undefined);
+
+        try {
+            await foodsService.updateFood(id, data as any);
+            return true;
+        } catch (err) {
+            console.error('Error updating food:', err);
+            setError(err as Error);
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    const deleteFood = useCallback(async (id: string): Promise<boolean> => {
+        setIsLoading(true);
+        setError(undefined);
+
+        try {
+            await foodsService.deleteFood(id);
+            return true;
+        } catch (err) {
+            console.error('Error deleting food:', err);
+            setError(err as Error);
+            return false;
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    return {
+        updateFood,
+        deleteFood,
+        isLoading,
+        error,
     };
 };

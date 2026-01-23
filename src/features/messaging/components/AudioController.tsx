@@ -1,12 +1,6 @@
 import React, { createContext, useContext, useRef, useCallback } from 'react';
 
-// Lazy import expo-av
-let Audio: any = null;
-try {
-    Audio = require('expo-av').Audio;
-} catch (e) {
-    console.log('expo-av not available');
-}
+import { Audio } from 'expo-av';
 
 interface AudioController {
     currentSound: any;
@@ -40,10 +34,6 @@ export function AudioControllerProvider({ children }: { children: React.ReactNod
     }, []);
 
     const play = useCallback(async (id: string, uri: string, onStatusUpdate: (status: any) => void) => {
-        if (!Audio) {
-            console.log('Audio not available');
-            return;
-        }
 
         // If same audio, resume
         if (currentIdRef.current === id && soundRef.current) {

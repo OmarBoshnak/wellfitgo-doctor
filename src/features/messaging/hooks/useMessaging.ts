@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MOCK_MESSAGES, MOCK_CONVERSATIONS } from '../data/mockData';
 import { ChatMessage, ChatConversation } from '../components/types';
+import { messagingService, Message, Conversation } from '@/src/shared/services/messaging.service';
+import { SocketService } from '@/src/shared/services/socket/socket.service';
 
 export type InboxFilter = 'all' | 'unread' | 'favorites' | 'archived';
 
@@ -9,15 +10,8 @@ interface CoachInboxStats {
     totalActive: number;
 }
 
-// Map ChatMessage to local Message type expected by components if needed, or unify types.
-// The existing components seem to expect a Message type defined locally in the old hook or imported.
-// Let's align with the types defined in components/types.ts which we used for mocks.
-// However, the components might be using the local Message type definition from the old file.
-// Let's check if we can just use ChatMessage everywhere.
-
-// The old local Message type had some differences. Let's adapt our hook to return what components expect.
-
-type Message = {
+// Internal Message type for hook state
+type InternalMessage = {
     _id: string;
     conversationId: string;
     senderId: string;
@@ -29,46 +23,87 @@ type Message = {
     isDeleted?: boolean;
     isEdited?: boolean;
     isReadByClient?: boolean;
-    isReadByCoach?: boolean;
+    isReadByDoctor?: boolean;
     createdAt: string;
     optimistic?: boolean;
 };
 
-// Helper to convert mock ChatMessage to internal Message format
-const convertToInternalMessage = (msg: ChatMessage, conversationId: string): Message => ({
-    _id: msg.id,
-    conversationId,
-    senderId: msg.senderId || (msg.sender === 'me' ? 'me' : 'client'),
-    content: msg.content,
-    messageType: msg.type,
-    mediaUrl: msg.audioUri,
-    mediaDuration: msg.audioDuration,
-    isDeleted: msg.status === 'deleted',
-    isEdited: msg.status === 'edited',
-    createdAt: msg.timestamp,
-    optimistic: msg.status === 'sending',
-});
-
 export function useMessages(conversationId?: string, currentUserId?: string) {
-    const [messages, setMessages] = useState<Message[]>([]);
+    const [messages, setMessages] = useState<InternalMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Fetch messages from backend
     useEffect(() => {
         if (!conversationId) {
             setMessages([]);
             return;
         }
 
-        setIsLoading(true);
-        // Simulate API delay
-        const timer = setTimeout(() => {
-            const mockMsgs = MOCK_MESSAGES[conversationId] || [];
-            setMessages(mockMsgs.map(m => convertToInternalMessage(m, conversationId)));
-            setIsLoading(false);
-        }, 800);
+        const fetchMessages = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const response = await messagingService.getMessages(conversationId);
+                setMessages(response.messages);
+            } catch (err) {
+                console.error('Error fetching messages:', err);
+                setError('Failed to load messages');
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-        return () => clearTimeout(timer);
+        fetchMessages();
+
+        // Subscribe to real-time updates
+        SocketService.joinConversation(conversationId);
+
+        const handleNewMessage = (message: any) => {
+            if (message.conversationId === conversationId) {
+                setMessages((prev) => {
+                    // Check if message already exists (avoid duplicates)
+                    const exists = prev.some((m) => m._id === message._id);
+                    if (exists) return prev;
+                    return [...prev, message];
+                });
+            }
+        };
+
+        const handleMessageEdited = (data: any) => {
+            if (data.conversationId === conversationId) {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m._id === data.messageId
+                            ? { ...m, content: data.content, isEdited: true }
+                            : m
+                    )
+                );
+            }
+        };
+
+        const handleMessageDeleted = (data: any) => {
+            if (data.conversationId === conversationId) {
+                setMessages((prev) =>
+                    prev.map((m) =>
+                        m._id === data.messageId
+                            ? { ...m, isDeleted: true, content: 'تم حذف هذه الرسالة' }
+                            : m
+                    )
+                );
+            }
+        };
+
+        SocketService.onNewMessage(handleNewMessage);
+        SocketService.onMessageEdited(handleMessageEdited);
+        SocketService.onMessageDeleted(handleMessageDeleted);
+
+        return () => {
+            SocketService.leaveConversation(conversationId);
+            SocketService.offNewMessage();
+            SocketService.offMessageEdited();
+            SocketService.offMessageDeleted();
+        };
     }, [conversationId]);
 
     const addOptimisticMessage = useCallback(
@@ -80,10 +115,11 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         }) => {
             if (!conversationId) return null;
             const tempId = `temp-${Date.now()}`;
-            const newMsg: Message = {
+            const newMsg: InternalMessage = {
                 _id: tempId,
                 conversationId,
                 senderId: currentUserId || 'me',
+                senderRole: 'doctor',
                 content: data.content,
                 messageType: data.messageType || 'text',
                 mediaUrl: data.mediaUrl,
@@ -99,7 +135,7 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         [conversationId, currentUserId]
     );
 
-    const replaceOptimisticMessage = useCallback((tempId: string | null, realMessage?: Message) => {
+    const replaceOptimisticMessage = useCallback((tempId: string | null, realMessage?: InternalMessage) => {
         if (!tempId || !realMessage) return;
         setMessages((prev) => prev.map((m) => (m._id === tempId ? realMessage : m)));
     }, []);
@@ -109,13 +145,17 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         setMessages((prev) => prev.filter((m) => m._id !== tempId));
     }, []);
 
-    const updateLocal = useCallback((id: string, partial: Partial<Message>) => {
+    const updateLocal = useCallback((id: string, partial: Partial<InternalMessage>) => {
         setMessages((prev) => prev.map((m) => (m._id === id ? { ...m, ...partial } : m)));
     }, []);
 
     const markAsRead = useCallback(async () => {
-        // No-op for mocks
-        console.log('Marking conversation as read:', conversationId);
+        if (!conversationId) return;
+        try {
+            await messagingService.markAsRead(conversationId);
+        } catch (error) {
+            console.error('Error marking as read:', error);
+        }
     }, [conversationId]);
 
     return {
@@ -140,25 +180,24 @@ export function useSendMessage() {
             messageType?: string;
             mediaUrl?: string;
             mediaDuration?: number;
+            replyToId?: string;
         }) => {
             setIsLoading(true);
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const newMessage: Message = {
-                _id: `msg-${Date.now()}`,
-                conversationId: data.conversationId,
-                senderId: 'me',
-                content: data.content,
-                messageType: data.messageType || 'text',
-                mediaUrl: data.mediaUrl,
-                mediaDuration: data.mediaDuration,
-                createdAt: new Date().toISOString(),
-                isDeleted: false,
-                isEdited: false,
-            };
-            setIsLoading(false);
-            return newMessage;
+            try {
+                const message = await messagingService.sendMessage(data.conversationId, {
+                    content: data.content,
+                    messageType: data.messageType as any || 'text',
+                    mediaUrl: data.mediaUrl,
+                    mediaDuration: data.mediaDuration,
+                    replyToId: data.replyToId,
+                });
+                setIsLoading(false);
+                return message;
+            } catch (error) {
+                console.error('Error sending message:', error);
+                setIsLoading(false);
+                throw error;
+            }
         },
         []
     );
@@ -167,8 +206,15 @@ export function useSendMessage() {
 }
 
 export function useChatScreen(conversationId?: string) {
-    const { messages, isLoading, markAsRead, addOptimisticMessage, replaceOptimisticMessage } = useMessages(conversationId, 'me');
+    const { messages, isLoading, markAsRead, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage } = useMessages(conversationId, 'me');
     const { send } = useSendMessage();
+
+    // Mark as read when entering conversation
+    useEffect(() => {
+        if (conversationId) {
+            markAsRead();
+        }
+    }, [conversationId, markAsRead]);
 
     const sendMessage = useCallback(
         async (
@@ -198,14 +244,15 @@ export function useChatScreen(conversationId?: string) {
 
                 // Replace optimistic with real
                 if (tempId && response) {
-                    replaceOptimisticMessage(tempId, response);
+                    replaceOptimisticMessage(tempId, response as any);
                 }
             } catch (error) {
                 console.error('Failed to send message:', error);
-                // Ideally remove optimistic message on error, but keeping simple for now
+                // Remove optimistic message on error
+                removeOptimisticMessage(tempId);
             }
         },
-        [conversationId, send, addOptimisticMessage, replaceOptimisticMessage]
+        [conversationId, send, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage]
     );
 
     return {
@@ -221,33 +268,80 @@ export function useCoachInbox(filter: InboxFilter = 'all') {
     const [isLoading, setIsLoading] = useState(false);
     const [stats, setStats] = useState<CoachInboxStats>({ totalUnread: 0, totalActive: 0 });
 
+    // Fetch conversations from backend
     useEffect(() => {
-        setIsLoading(true);
-        // Simulate API call
-        const timer = setTimeout(() => {
-            let filtered = [...MOCK_CONVERSATIONS];
+        const fetchConversations = async () => {
+            setIsLoading(true);
+            try {
+                const backendFilter = filter === 'unread' ? 'unread' : 'all';
+                const data = await messagingService.getConversations(backendFilter);
 
-            if (filter === 'unread') {
-                filtered = filtered.filter(c => (c.unreadCount || 0) > 0);
+                // Transform to ChatConversation format
+                const transformed: ChatConversation[] = data.map((conv) => ({
+                    id: conv.id,
+                    clientId: conv.clientId,
+                    name: conv.name,
+                    avatar: conv.avatar || '',
+                    isOnline: conv.isOnline,
+                    lastMessage: conv.lastMessage,
+                    lastMessageAt: conv.lastMessageAt,
+                    unreadCount: conv.unreadCount,
+                    priority: conv.unreadCount > 0 ? 'high' : 'normal',
+                }));
+
+                setConversations(transformed);
+
+                // Calculate stats
+                const totalUnread = data.reduce((acc, curr) => acc + curr.unreadCount, 0);
+                const totalActive = data.length;
+                setStats({ totalUnread, totalActive });
+            } catch (error) {
+                console.error('Error fetching conversations:', error);
+            } finally {
+                setIsLoading(false);
             }
+        };
 
-            setConversations(filtered);
+        fetchConversations();
 
-            // Calculate stats
-            const totalUnread = MOCK_CONVERSATIONS.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
-            const totalActive = MOCK_CONVERSATIONS.length;
-            setStats({ totalUnread, totalActive });
+        // Listen for new messages to update conversation list
+        const handleNewMessage = (message: any) => {
+            setConversations((prev) => {
+                const updated = prev.map((conv) => {
+                    if (conv.id === message.conversationId) {
+                        return {
+                            ...conv,
+                            lastMessage: message.content,
+                            lastMessageAt: new Date(message.createdAt).getTime(),
+                            unreadCount: message.senderRole === 'client'
+                                ? (conv.unreadCount || 0) + 1
+                                : conv.unreadCount,
+                        };
+                    }
+                    return conv;
+                });
+                // Sort by lastMessageAt
+                return updated.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+            });
 
-            setIsLoading(false);
-        }, 500);
+            // Update stats
+            setStats((prev) => ({
+                ...prev,
+                totalUnread: prev.totalUnread + 1,
+            }));
+        };
 
-        return () => clearTimeout(timer);
+        SocketService.onNewMessage(handleNewMessage);
+
+        return () => {
+            SocketService.offNewMessage();
+        };
     }, [filter]);
 
     return {
         conversations,
         isLoading,
         stats,
-        totalUnread: stats.totalUnread, // Backward compatibility
+        totalUnread: stats.totalUnread,
     };
 }

@@ -123,19 +123,20 @@ export const DayEventCard: React.FC<DayEventCardProps> = ({
                         styles.cardBody,
                         { flexDirection: isRTL ? 'row' : 'row-reverse' }
                     ]}>
+                        <View style={[
+                            styles.textContainer,
+                            { alignItems: isRTL ? 'flex-end' : 'flex-start' }
+                        ]}>
+                            <Text style={styles.eventTitle}>{event.title}</Text>
+                            <Text style={styles.eventSubtitle}>{event.subtitle}</Text>
+                        </View>
                         <LinearGradient
                             colors={scheme.gradient}
                             style={styles.iconCircle}
                         >
                             <IconComponent size={horizontalScale(20)} color="#FFFFFF" />
                         </LinearGradient>
-                        <View style={[
-                            styles.textContainer,
-                            { alignItems: isRTL ? 'flex-start' : 'flex-end' }
-                        ]}>
-                            <Text style={styles.eventTitle}>{event.title}</Text>
-                            <Text style={styles.eventSubtitle}>{event.subtitle}</Text>
-                        </View>
+
                     </View>
 
                     {/* Footer: Client & Action */}

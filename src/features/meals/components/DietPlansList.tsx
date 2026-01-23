@@ -91,7 +91,9 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
     const renderHeader = () => (
         <View style={[styles.header, { paddingTop: insets.top }]}>
             <View style={[styles.headerRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                <View style={{ marginHorizontal: horizontalScale(16) }} />
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <BackArrow />
+                </TouchableOpacity>
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>
                         {category.name} {t.diets}
@@ -100,21 +102,14 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
                         {category.nameAr}
                     </Text>
                 </View>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <BackArrow />
-                </TouchableOpacity>
+                <View style={{ marginHorizontal: horizontalScale(16) }} />
+
             </View>
         </View>
     );
 
     const renderBanner = () => (
         <View style={[styles.banner, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            <View style={[styles.bannerContent, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                <Text style={styles.bannerEmoji}>{category.emoji || '🥗'}</Text>
-                <Text style={[styles.bannerText, { textAlign: isRTL ? 'left' : 'right' }]}>
-                    {category.description || t.chooseDiet}
-                </Text>
-            </View>
             {onCreateNew && (
                 <TouchableOpacity
                     onPress={() => {
@@ -134,6 +129,12 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
                     </LinearGradient>
                 </TouchableOpacity>
             )}
+            <View style={[styles.bannerContent, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                <Text style={[styles.bannerText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                    {category.description || t.chooseDiet}
+                </Text>
+                <Text style={styles.bannerEmoji}>{category.emoji || '🥗'}</Text>
+            </View>
         </View>
     );
 
@@ -241,7 +242,7 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
             {renderBanner()}
 
             {/* Section Title */}
-            <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
+            <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
                 {t.chooseDiet}
             </Text>
 

@@ -155,17 +155,27 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
     const [activePicker, setActivePicker] = useState<'client' | 'date' | 'startTime' | 'endTime' | null>(null);
 
     // -------------------------------------------------------------------------
-    // LOCAL STATE FOR CLIENTS (replaces Convex useQuery)
+    // LOCAL STATE FOR CLIENTS
     // -------------------------------------------------------------------------
-    // -------------------------------------------------------------------------
-    // LOCAL STATE FOR CLIENTS (replaces Convex useQuery)
-    // -------------------------------------------------------------------------
-    // Use mock data
-    const [clients, setClients] = useState<any[]>(require('../../mock').mockClients);
+    const [clients, setClients] = useState<any[]>([]);
+    const [isLoadingClients, setIsLoadingClients] = useState(false);
 
     useEffect(() => {
-        // Simulate fetch
-    }, []);
+        const fetchClients = async () => {
+            if (!visible) return;
+            try {
+                setIsLoadingClients(true);
+                const { appointmentService } = await import('@/src/shared/services/appointment.service');
+                const data = await appointmentService.getClients();
+                setClients(data);
+            } catch (error) {
+                console.error('[AddCallModal] Error fetching clients:', error);
+            } finally {
+                setIsLoadingClients(false);
+            }
+        };
+        fetchClients();
+    }, [visible]);
 
     // -------------------------------------------------------------------------
     // DERIVED VALUES
@@ -248,23 +258,28 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
         }
 
         setIsCreating(true);
-        // Simulate API call
-        setTimeout(() => {
-            const event = {
-                _id: `temp-${Date.now()}`,
+        try {
+            const { appointmentService } = await import('@/src/shared/services/appointment.service');
+            const createdEvent = await appointmentService.createAppointment({
                 clientId: selectedClientId,
+                clientName: selectedClient?.firstName + ' ' + selectedClient?.lastName,
+                clientPhone: selectedClient?.phone,
                 date: isoDate,
                 startTime,
                 endTime,
-                reason: title || 'Phone Call',
-                notes: notes.trim() || undefined,
-                clientName: selectedClient?.firstName + ' ' + selectedClient?.lastName,
-                clientPhone: selectedClient?.phone
-            };
-            onEventCreated?.(event);
-            setIsCreating(false);
+                notes: (title || 'Phone Call') + (notes.trim() ? ` - ${notes.trim()}` : ''),
+            });
+
+            if (createdEvent) {
+                onEventCreated?.(createdEvent);
+            }
             onClose();
-        }, 500);
+        } catch (error) {
+            console.error('[AddCallModal] Error creating appointment:', error);
+            Alert.alert('Error', 'Failed to create appointment. Please try again.');
+        } finally {
+            setIsCreating(false);
+        }
     }, [selectedClientId, selectedClient, isoDate, startTime, endTime, title, notes, onEventCreated, onClose]);
 
 
@@ -294,10 +309,10 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                     {/* Header */}
                     <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.headerTitle}>{t.newAppointment}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <X size={24} color="#526477" />
                         </TouchableOpacity>
+                        <Text style={styles.headerTitle}>{t.newAppointment}</Text>
                     </View>
 
                     {/* Scrollable Content */}
@@ -309,25 +324,26 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
                     >
                         {/* Client Section */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {t.client}
                             </Text>
                             <TouchableOpacity
                                 style={[styles.selectInput, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                                 onPress={() => togglePicker('client')}
                             >
-                                <Search size={20} color="#5173fb" />
+                                <ChevronDown size={20} color="#AAB8C5" />
+
                                 <Text style={[
                                     styles.selectText,
                                     !selectedClient && !preselectedClientName && styles.placeholderText,
-                                    { textAlign: isRTL ? 'left' : 'right', marginHorizontal: horizontalScale(8) }
+                                    { textAlign: isRTL ? 'right' : 'left', marginHorizontal: horizontalScale(8) }
                                 ]}>
                                     {selectedClient
                                         ? `${selectedClient.firstName} ${selectedClient.lastName}`
                                         : preselectedClientName || t.selectClient
                                     }
                                 </Text>
-                                <ChevronDown size={20} color="#AAB8C5" />
+                                <Search size={20} color="#5173fb" />
                             </TouchableOpacity>
 
                             {activePicker === 'client' && (
@@ -358,7 +374,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
                         </View>
 
                         {/* Phone Call Indicator */}
-                        <View style={[styles.phoneCallIndicator, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <View style={[styles.phoneCallIndicator, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <Phone size={20} color="#5173fb" />
                             <Text style={styles.phoneCallText}>
                                 {isRTL ? 'مكالمة هاتفية' : 'Phone Call'}
@@ -367,18 +383,21 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                         {/* Date Section */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {t.date}
                             </Text>
                             <TouchableOpacity
                                 style={[styles.selectInput, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                                 onPress={() => togglePicker('date')}
                             >
-                                <Calendar size={20} color="#5173fb" />
-                                <Text style={[styles.selectText, { textAlign: isRTL ? 'left' : 'right', marginHorizontal: horizontalScale(8) }]}>
+                                <ChevronDown size={20} color="#AAB8C5" />
+                                <Text style={[
+                                    styles.selectText,
+                                    { textAlign: isRTL ? 'right' : 'left', marginHorizontal: horizontalScale(8) }
+                                ]}>
                                     {formattedDate}
                                 </Text>
-                                <ChevronDown size={20} color="#AAB8C5" />
+                                <Calendar size={20} color="#5173fb" />
                             </TouchableOpacity>
 
                             {/* Date Picker - Vertical List of Next 14 Days */}
@@ -416,39 +435,41 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                         {/* Time Section */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {t.time}
                             </Text>
                             <View style={[styles.timeRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                {/* From Label */}
-                                <Text style={styles.timeLabel}>{isRTL ? 'من' : 'From'}</Text>
 
-                                {/* Start Time Picker */}
-                                <TouchableOpacity
-                                    style={[styles.timePicker, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
-                                    onPress={() => togglePicker('startTime')}
-                                >
-                                    <Clock size={16} color="#526477" />
-                                    <Text style={[styles.timeText, { textAlign: isRTL ? 'left' : 'right', marginHorizontal: 4 }]}>
-                                        {startTimeLabel}
-                                    </Text>
-                                    <ChevronDown size={16} color="#AAB8C5" />
-                                </TouchableOpacity>
-
-                                {/* To Label */}
-                                <Text style={styles.timeLabel}>{isRTL ? 'الى' : 'To'}</Text>
 
                                 {/* End Time Picker */}
                                 <TouchableOpacity
                                     style={[styles.timePicker, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                                     onPress={() => togglePicker('endTime')}
                                 >
-                                    <Clock size={16} color="#526477" />
-                                    <Text style={[styles.timeText, { textAlign: isRTL ? 'left' : 'right', marginHorizontal: 4 }]}>
+                                    <ChevronDown size={16} color="#AAB8C5" />
+                                    <Text style={[styles.timeText, { textAlign: isRTL ? 'right' : 'left', marginHorizontal: 4 }]}>
                                         {endTimeLabel}
                                     </Text>
-                                    <ChevronDown size={16} color="#AAB8C5" />
+                                    <Clock size={16} color="#526477" />
+
                                 </TouchableOpacity>
+                                {/* To Label */}
+                                <Text style={styles.timeLabel}>{isRTL ? 'الى' : 'To'}</Text>
+
+
+                                {/* Start Time Picker */}
+                                <TouchableOpacity
+                                    style={[styles.timePicker, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                                    onPress={() => togglePicker('startTime')}
+                                >
+                                    <ChevronDown size={16} color="#AAB8C5" />
+                                    <Text style={[styles.timeText, { textAlign: isRTL ? 'right' : 'left', marginHorizontal: 4 }]}>
+                                        {startTimeLabel}
+                                    </Text>
+                                    <Clock size={16} color="#526477" />
+                                </TouchableOpacity>
+                                {/* From Label */}
+                                <Text style={styles.timeLabel}>{isRTL ? 'من' : 'From'}</Text>
                             </View>
 
                             {/* Start Time Dropdown */}
@@ -463,7 +484,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
                                             <Text style={[
                                                 styles.timeOptionText,
 
-                                                startTime === slot.value && styles.timeOptionSelected, { textAlign: isRTL ? 'left' : 'right' }
+                                                startTime === slot.value && styles.timeOptionSelected, { textAlign: isRTL ? 'right' : 'left' }
                                             ]}>
                                                 {slot.label}
                                             </Text>
@@ -486,7 +507,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
                                                 <Text style={[
                                                     styles.timeOptionText,
                                                     endTime === slot.value && styles.timeOptionSelected,
-                                                    { textAlign: isRTL ? 'left' : 'right' }
+                                                    { textAlign: isRTL ? 'right' : 'left' }
                                                 ]}>
                                                     {slot.label}
                                                 </Text>
@@ -498,7 +519,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                         {/* Title (Optional) */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {isRTL ? 'العنوان (اختياري)' : 'TITLE (OPTIONAL)'}
                             </Text>
                             <TextInput
@@ -512,7 +533,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                         {/* Notes (Optional) */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {isRTL ? 'ملاحظات (اختياري)' : 'NOTES (OPTIONAL)'}
                             </Text>
                             <TextInput
@@ -528,12 +549,12 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                         {/* Reminders */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {t.reminders}
                             </Text>
 
                             <TouchableOpacity
-                                style={[styles.checkboxRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                                style={[styles.checkboxRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                                 onPress={() => setRemind15Min(!remind15Min)}
                             >
                                 <View style={[styles.checkbox, remind15Min && styles.checkboxChecked]}>
@@ -543,7 +564,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.checkboxRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                                style={[styles.checkboxRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                                 onPress={() => setRemindClient1Hour(!remindClient1Hour)}
                             >
                                 <View style={[styles.checkbox, remindClient1Hour && styles.checkboxChecked]}>
@@ -558,7 +579,7 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                     {/* Footer */}
                     <View style={styles.footer}>
-                        <View style={[styles.footerButtons, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <View style={[styles.footerButtons, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <TouchableOpacity
                                 style={styles.cancelButton}
                                 onPress={onClose}
@@ -755,7 +776,7 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     dateItem: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,

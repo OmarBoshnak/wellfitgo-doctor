@@ -7,13 +7,7 @@ import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import { colors } from '@/src/core/constants/Theme';
 
-// Lazy import expo-av
-let Audio: any = null;
-try {
-    Audio = require('expo-av').Audio;
-} catch (e) {
-    console.log('expo-av not available for VoiceMessageBubble');
-}
+import { Audio } from 'expo-av';
 
 // Singleton to track currently playing audio
 let currentlyPlayingId: string | null = null;
@@ -146,11 +140,6 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
     }, []);
 
     const handlePlayPause = async () => {
-        // Guard: Audio module must be available
-        if (!Audio) {
-            Alert.alert('خطأ', 'الصوت غير متاح');
-            return;
-        }
 
         // Guard: URL must be defined (iOS crashes on undefined)
         if (!actualAudioUri) {

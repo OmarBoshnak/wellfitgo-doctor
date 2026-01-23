@@ -103,14 +103,23 @@ export const CalendarScreen: React.FC = () => {
         });
     }, [weekDays]);
 
-    // Fetch events from backend for the week range - mocked
+    // Fetch events from backend for the week range
     const startDate = weekDates[0];
     const endDate = weekDates[weekDates.length - 1];
 
     useEffect(() => {
-        // Simulate fetch
-        const { getDynamicMockEvents } = require('./mock');
-        setCalendarEvents(getDynamicMockEvents(startDate, endDate));
+        const fetchEvents = async () => {
+            if (!startDate || !endDate) return;
+            try {
+                const { appointmentService } = await import('@/src/shared/services/appointment.service');
+                const data = await appointmentService.getAppointments(startDate, endDate);
+                setCalendarEvents(data);
+            } catch (error) {
+                console.error('[CalendarScreen] Error fetching events:', error);
+                setCalendarEvents([]);
+            }
+        };
+        fetchEvents();
     }, [startDate, endDate]);
 
     // Combine events with optimistic updates
@@ -129,7 +138,7 @@ export const CalendarScreen: React.FC = () => {
     // Handle view change - navigate to Day Calendar for Day view
     const handleViewChange = (view: CalendarView) => {
         if (view === 'day') {
-            router.push('/doctor/day-calendar' as any);
+            router.push('/doctor-calendar/day' as any);
         } else {
             setView(view);
         }

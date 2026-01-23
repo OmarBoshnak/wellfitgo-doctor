@@ -34,7 +34,7 @@ const ChatHeader = React.memo(function ChatHeader({ conversation, onBack, onOpti
 
                 {/* User Info - Touchable to navigate to profile */}
                 <TouchableOpacity
-                    style={[styles.userInfo, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                    style={[styles.userInfo, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                     onPress={onProfilePress}
                     activeOpacity={0.7}
                 >
@@ -50,6 +50,7 @@ const ChatHeader = React.memo(function ChatHeader({ conversation, onBack, onOpti
                         )}
                         {conversation.isOnline && <View style={styles.onlineDot} />}
                     </View>
+
                     <View style={styles.textContainer}>
                         <Text style={styles.userName}>{conversation.name}</Text>
                         <View style={styles.statusRow}>
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
     container: {
         backgroundColor: colors.bgPrimary,
         borderBottomWidth: 1,
+        height: 120,
         borderBottomColor: colors.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -79,7 +81,9 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     content: {
-        flexDirection: 'row-reverse', // RTL
+        flex: 1,
+        flexDirection: 'row', // RTL
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: horizontalScale(8),
         paddingVertical: verticalScale(12),
@@ -98,7 +102,6 @@ const styles = StyleSheet.create({
         gap: horizontalScale(12),
     },
     avatarContainer: {
-        position: 'relative',
     },
     avatar: {
         width: horizontalScale(36),
@@ -110,7 +113,7 @@ const styles = StyleSheet.create({
     onlineDot: {
         position: 'absolute',
         bottom: 0,
-        left: 0, // RTL: left side
+        right: 0, // RTL: left side
         width: horizontalScale(10),
         height: horizontalScale(10),
         borderRadius: horizontalScale(5),
@@ -119,7 +122,7 @@ const styles = StyleSheet.create({
         borderColor: colors.bgPrimary,
     },
     textContainer: {
-        alignItems: 'flex-start', // RTL
+        alignItems: 'flex-end', // RTL
     },
     userName: {
         fontSize: ScaleFontSize(16),

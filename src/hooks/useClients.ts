@@ -2,9 +2,10 @@
  * Custom hook for fetching and managing clients
  * Supports filtering by weekly check-in day
  */
-import { useMemo, useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { Alert } from "react-native";
 import { isRTL } from "../i18n";
+import { clientsService } from "@/src/shared/services/clients.service";
 
 // ============ TYPES ============
 
@@ -115,26 +116,6 @@ export function formatLastCheckIn(days: number | null): string {
     return translations.monthsAgo(months);
 }
 
-/**
- * Calculate progress percentage
- */
-function calculateProgress(start: number, current: number, target: number): number {
-    if (start === target) return 100;
-    const totalChange = Math.abs(start - target);
-    const currentChange = Math.abs(start - current);
-    return Math.min(Math.max(Math.round((currentChange / totalChange) * 100), 0), 100);
-}
-
-/**
- * Calculate days since a date
- */
-function daysSince(dateString: string): number {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
-}
-
 // ============ MAIN HOOK ============
 
 /**
@@ -152,12 +133,16 @@ export function useClients(
     const [isLoading, setIsLoading] = useState(true);
     const [isSendingReminder, setIsSendingReminder] = useState(false);
 
-    // Fetch clients
+    // Fetch clients from backend
     const fetchClients = useCallback(async () => {
         setIsLoading(true);
         try {
+            const response = await clientsService.getClients(filter, searchQuery);
+            setClients(response.clients);
+            setCounts(response.counts);
         } catch (error) {
             console.error('Error fetching clients:', error);
+            // Keep existing data on error
         } finally {
             setIsLoading(false);
         }
@@ -175,6 +160,17 @@ export function useClients(
         ) => {
             setIsSendingReminder(true);
             try {
+                await clientsService.sendReminder(clientId, type);
+
+                // Show success message
+                const client = clients.find(c => c.id === clientId);
+                const clientName = client?.name || 'Client';
+
+                Alert.alert(
+                    translations.sent,
+                    translations.reminderSent(clientName),
+                    [{ text: translations.ok }]
+                );
             } catch (error: unknown) {
                 const errorMessage = error instanceof Error
                     ? error.message

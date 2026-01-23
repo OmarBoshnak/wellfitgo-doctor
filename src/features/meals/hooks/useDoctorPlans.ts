@@ -1,17 +1,11 @@
 /**
  * Doctor Plans Dashboard Hook
  *
- * Fetches doctor's assigned meal plans from Mock Data.
- * Simplified version that loads quickly and handles errors gracefully.
+ * Fetches doctor's assigned meal plans from Backend.
  */
 
 import { useEffect, useState, useCallback } from "react";
-import {
-    MOCK_ACTIVE_PLANS,
-    MOCK_DRAFT_PLANS,
-    MOCK_ASSIGNMENT_CLIENTS,
-    MOCK_DIET_PROGRAMS
-} from '../data/mockData';
+import { plansService } from "@/src/shared/services";
 
 // Lightweight Id replacement until Convex types are removed
 export type Id<TableName extends string = string> = string & { __table?: TableName };
@@ -97,7 +91,7 @@ export function useDoctorPlans() {
     const [hasError, setHasError] = useState(false);
 
     const load = useCallback(async (isRefresh = false) => {
-        console.log('[useDoctorPlans] Starting load (Mock), isRefresh:', isRefresh);
+        console.log('[useDoctorPlans] Starting load (Backend), isRefresh:', isRefresh);
 
         if (isRefresh) {
             setIsRefreshing(true);
@@ -107,14 +101,22 @@ export function useDoctorPlans() {
         setHasError(false);
 
         try {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 800));
+            const [
+                fetchedActivePlans,
+                fetchedDraftPlans,
+                fetchedClients,
+                fetchedDietPrograms
+            ] = await Promise.all([
+                plansService.getActivePlans(),
+                plansService.getDraftPlans(),
+                plansService.getClientsForAssignment(),
+                plansService.getDietPrograms()
+            ]);
 
-            // Load mock data
-            setClientsForAssignment(MOCK_ASSIGNMENT_CLIENTS as unknown as AssignmentClient[]);
-            setDietPrograms(MOCK_DIET_PROGRAMS as unknown as DietProgramItem[]);
-            setActivePlans(MOCK_ACTIVE_PLANS as unknown as DoctorPlanItem[]);
-            setDraftPlans(MOCK_DRAFT_PLANS as unknown as DraftPlanItem[]);
+            setActivePlans(fetchedActivePlans as unknown as DoctorPlanItem[]);
+            setDraftPlans(fetchedDraftPlans as unknown as DraftPlanItem[]);
+            setClientsForAssignment(fetchedClients as unknown as AssignmentClient[]);
+            setDietPrograms(fetchedDietPrograms as unknown as DietProgramItem[]);
 
         } catch (error) {
             console.error("[useDoctorPlans] Error:", error);
@@ -129,8 +131,6 @@ export function useDoctorPlans() {
     useEffect(() => {
         load(false);
     }, [load]);
-
-    // Socket listeners removed for mocks
 
     const refetch = useCallback(() => {
         load(true);

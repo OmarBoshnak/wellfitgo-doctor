@@ -123,16 +123,19 @@ export default function ClientsScreen() {
 
     // ============ HANDLERS ============
 
-    // const navigateToProfile = useCallback((clientId: string) => {
-    //     router.push(`/(app)/doctor/client-profile?id=${clientId}`);
-    // }, [router]);
+    const navigateToProfile = useCallback((clientId: string) => {
+        router.push({
+            pathname: '/doctor/client-profile',
+            params: { id: clientId },
+        } as any);
+    }, [router]);
 
-    // const navigateToMessages = useCallback((clientId: string) => {
-    //     router.push({
-    //         pathname: '/(app)/doctor/(tabs)/messages',
-    //         params: { openChatWithClient: clientId },
-    //     });
-    // }, [router]);
+    const navigateToMessages = useCallback((clientId: string) => {
+        router.push({
+            pathname: '/doctor/(tabs)/messages',
+            params: { openChatWithClient: clientId },
+        } as any);
+    }, [router]);
 
     const handleSendReminder = useCallback(async (client: Client) => {
         // Determine reminder type based on client status
@@ -212,7 +215,7 @@ export default function ClientsScreen() {
                 {/* Header */}
                 <TouchableOpacity
                     style={[styles.cardHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
-                    // onPress={() => navigateToProfile(client.id)}
+                    onPress={() => navigateToProfile(client.id)}
                     activeOpacity={0.7}
                 >
                     <View style={[styles.cardHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
@@ -291,7 +294,7 @@ export default function ClientsScreen() {
                     <View style={[styles.actionButtons, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                         <TouchableOpacity
                             style={styles.viewProfileButton}
-                            // onPress={() => navigateToProfile(client.id)}
+                            onPress={() => navigateToProfile(client.id)}
                             activeOpacity={0.7}
                         >
                             <Text style={styles.viewProfileText}>{t.viewProfile}</Text>
@@ -316,7 +319,7 @@ export default function ClientsScreen() {
                         ) : (
                             <TouchableOpacity
                                 activeOpacity={0.8}
-                            // onPress={() => navigateToMessages(client.id)}
+                                onPress={() => navigateToMessages(client.id)}
                             >
                                 <LinearGradient
                                     colors={gradients.primary}
@@ -340,7 +343,6 @@ export default function ClientsScreen() {
         <SafeAreaView edges={['left', 'right']} style={styles.container}>
             {/* Header */}
             <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse', paddingTop: insets.top }]}>
-                <Text style={styles.title}>{t.title}</Text>
                 <View style={[styles.headerActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <TouchableOpacity
                         style={styles.headerIconButton}
@@ -350,6 +352,8 @@ export default function ClientsScreen() {
                         <Search size={horizontalScale(22)} color={colors.textPrimary} />
                     </TouchableOpacity>
                 </View>
+                <Text style={styles.title}>{t.title}</Text>
+
             </View>
 
             {/* Search Bar */}
@@ -381,7 +385,7 @@ export default function ClientsScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={[
                         styles.filterScrollContent,
-                        { flexDirection: isRTL ? 'row' : 'row-reverse' },
+                        { flexDirection: isRTL ? 'row-reverse' : 'row' },
                     ]}
                 >
                     {filterChips.map(renderFilterChip)}

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     ScrollView,
     StyleSheet,
+    RefreshControl,
 } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import {
     Users,
@@ -27,6 +29,7 @@ import {
     useSocket,
 } from '@/src/lib';
 import { usePhoneCall } from '@/src/hooks/usePhoneCall';
+import { useUnreadNotificationCount } from '@/src/features/home/hooks/useNotifications';
 
 // Extracted Components
 import {
@@ -56,11 +59,16 @@ export default function DoctorDashboard() {
 
     // Use new backend hooks instead of Convex
     const { user } = useCurrentUser();
-    const { data: dashboardStats } = useDashboardStats();
+    const { data: dashboardStats, refetch: refetchStats } = useDashboardStats();
     const userName = user?.firstName || 'Doctor';
 
     // Get real-time unread messages count
-    const { totalUnread, oldestUnread, isLoading: messagesLoading } = useCoachInbox();
+    const {
+        totalUnread,
+        oldestUnread,
+        isLoading: messagesLoading,
+        refetch: refetchInbox
+    } = useCoachInbox();
 
     // ============ CLIENTS NEEDING ATTENTION ============
     const {
@@ -81,12 +89,16 @@ export default function DoctorDashboard() {
     // ============ PHONE CALL ============
     const { callClient } = usePhoneCall();
 
+    // ============ NOTIFICATIONS ============
+    const { count: notificationCount, refetch: refetchNotifications } = useUnreadNotificationCount();
+
     // ============ WEEKLY ACTIVITY ============
     const {
         stats: weeklyStats,
         chartData: weeklyChartData,
         isLoading: weeklyLoading,
         isEmpty: noWeeklyActivity,
+        refetch: refetchWeeklyActivity,
     } = useWeeklyActivity();
 
     // ============ RECENT ACTIVITY ============
@@ -94,7 +106,38 @@ export default function DoctorDashboard() {
         activities: recentActivities,
         isLoading: activitiesLoading,
         isEmpty: noActivities,
+        refetch: refetchRecentActivity,
     } = useRecentActivity(5);
+
+    // Refresh Control State
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                refetchStats(),
+                refetchInbox(),
+                refetchAttention(),
+                refetchAppointments(),
+                refetchNotifications(),
+                refetchWeeklyActivity(),
+                refetchRecentActivity(),
+            ]);
+        } catch (error) {
+            console.error('Error refreshing dashboard:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [
+        refetchStats,
+        refetchInbox,
+        refetchAttention,
+        refetchAppointments,
+        refetchNotifications,
+        refetchWeeklyActivity,
+        refetchRecentActivity
+    ]);
 
     // Notification panel visibility state
     const [showNotifications, setShowNotifications] = useState(false);
@@ -111,6 +154,16 @@ export default function DoctorDashboard() {
             router.push('/doctor/messages' as any);
         } else if (notification.type === 'weight_log') {
             router.push('/doctor/clients' as any);
+        }
+    };
+
+    // Handle search - navigate to clients with search filter
+    const handleSearch = (query: string) => {
+        if (query.trim()) {
+            router.push({
+                pathname: '/doctor/clients' as any,
+                params: { search: query },
+            });
         }
     };
 
@@ -211,8 +264,9 @@ export default function DoctorDashboard() {
             <DoctorHeader
                 userName={userName}
                 userImage={user?.avatarUrl}
-                notificationCount={0}
+                notificationCount={notificationCount}
                 onNotificationPress={() => setShowNotifications(true)}
+                onSearch={handleSearch}
                 style={{ paddingTop: insets.top }}
             />
 
@@ -223,10 +277,19 @@ export default function DoctorDashboard() {
                 onNotificationPress={handleNotificationPress}
             />
 
-            <ScrollView
+            <Animated.ScrollView
+                entering={FadeIn.duration(400)}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={colors.primary}
+                        colors={[colors.primary]}
+                    />
+                }
             >
                 {/* Quick Stats Grid */}
                 <StatsGrid stats={statsData} />
@@ -247,11 +310,11 @@ export default function DoctorDashboard() {
                     appointments={appointments}
                     isLoading={appointmentsLoading}
                     isEmpty={noAppointments}
-                    onAddPress={() => router.push('/doctor/calendar' as any)}
-                    onSchedulePress={() => router.push('/doctor/calendar' as any)}
-                    onAppointmentPress={() => router.push('/doctor/calendar' as any)}
+                    onAddPress={() => router.push('/doctor-calendar' as any)}
+                    onSchedulePress={() => router.push('/doctor-calendar' as any)}
+                    onAppointmentPress={() => router.push('/doctor-calendar' as any)}
                     onStartCall={(apt: any) => {
-                        router.push('/doctor/calendar' as any);
+                        router.push('/doctor-calendar' as any);
                     }}
                     onStartPhoneCall={(apt: any) => {
                         callClient(apt.clientId, apt.clientName, apt.clientPhone);
@@ -298,7 +361,7 @@ export default function DoctorDashboard() {
                         }
                     }}
                 />
-            </ScrollView>
+            </Animated.ScrollView>
         </SafeAreaView>
     );
 }

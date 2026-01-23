@@ -34,15 +34,15 @@ function StatCard({
 }: StatCardProps) {
     return (
         <TouchableOpacity style={styles.statCard} onPress={onPress} activeOpacity={0.7}>
-            <View style={{ flexDirection: isRTL ? 'row' : 'row-reverse' }}>
+            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                 <View style={[styles.statIconContainer, { backgroundColor: iconBgColor }]}>
                     {icon}
                 </View>
             </View>
-            <Text style={[styles.statValue, { textAlign: isRTL ? 'left' : 'right' }]}>{value}</Text>
-            <Text style={[styles.statLabel, { textAlign: isRTL ? 'left' : 'right' }]}>{label}</Text>
+            <Text style={[styles.statValue, { textAlign: isRTL ? 'right' : 'left' }]}>{value}</Text>
+            <Text style={[styles.statLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{label}</Text>
             {trend && (
-                <View style={[styles.statTrendContainer, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                <View style={[styles.statTrendContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     {trendUp ? (
                         <TrendingUp size={horizontalScale(12)} color={colors.success} />
                     ) : (
@@ -58,7 +58,7 @@ function StatCard({
                     </Text>
                 </View>
             )}
-            {subtext && <Text style={[styles.statSubtext, { textAlign: isRTL ? 'left' : 'right' }]}>{subtext}</Text>}
+            {subtext && <Text style={[styles.statSubtext, { textAlign: isRTL ? 'right' : 'left' }]}>{subtext}</Text>}
         </TouchableOpacity>
     );
 }

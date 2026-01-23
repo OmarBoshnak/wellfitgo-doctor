@@ -111,17 +111,19 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
     const [isDeleting, setIsDeleting] = useState(false);
     const [activePicker, setActivePicker] = useState<'date' | 'startTime' | 'endTime' | null>(null);
 
-    // Backend mutation functions - mocked
+    // Backend mutation functions
     const updateEvent = useCallback(async (data: { eventId: string; date: string; startTime: string; endTime: string }) => {
-        console.log('Mock update event:', data);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const { appointmentService } = await import('@/src/shared/services/appointment.service');
+        await appointmentService.updateAppointment(data.eventId, {
+            date: data.date,
+            startTime: data.startTime,
+            endTime: data.endTime,
+        });
     }, []);
 
     const cancelEvent = useCallback(async (data: { eventId: string }) => {
-        console.log('Mock cancel event:', data);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const { appointmentService } = await import('@/src/shared/services/appointment.service');
+        await appointmentService.deleteAppointment(data.eventId);
     }, []);
 
     // Derived
@@ -211,18 +213,19 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                 <View style={styles.container}>
                     {/* Header */}
                     <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.headerTitle}>
-                            {isRTL ? 'تعديل الموعد' : 'Edit Appointment'}
-                        </Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <X size={24} color="#526477" />
                         </TouchableOpacity>
+
+                        <Text style={styles.headerTitle}>
+                            {isRTL ? 'تعديل الموعد' : 'Edit Appointment'}
+                        </Text>
                     </View>
 
                     <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                         {/* Client Name (Read-only) */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {isRTL ? 'العميل' : 'CLIENT'}
                             </Text>
                             <View style={styles.readOnlyField}>
@@ -232,7 +235,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
 
                         {/* Date Picker */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {isRTL ? 'التاريخ' : 'DATE'}
                             </Text>
                             <TouchableOpacity
@@ -240,7 +243,7 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                                 onPress={() => togglePicker('date')}
                             >
                                 <Calendar size={20} color="#5173fb" />
-                                <Text style={[styles.pickerText, { textAlign: isRTL ? 'left' : 'right', flex: 1, marginHorizontal: 8 }]}>
+                                <Text style={[styles.pickerText, { textAlign: isRTL ? 'right' : 'left', flex: 1, marginHorizontal: 8 }]}>
                                     {selectedDateLabel}
                                 </Text>
                             </TouchableOpacity>
@@ -271,20 +274,10 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
 
                         {/* Time Pickers */}
                         <View style={styles.section}>
-                            <Text style={[styles.label, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.label, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {isRTL ? 'الوقت' : 'TIME'}
                             </Text>
                             <View style={[styles.timeRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                <Text style={styles.timeLabel}>{isRTL ? 'من' : 'From'}</Text>
-                                <TouchableOpacity
-                                    style={[styles.timePicker, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
-                                    onPress={() => togglePicker('startTime')}
-                                >
-                                    <Clock size={16} color="#526477" />
-                                    <Text style={[styles.timeText, { marginHorizontal: 4 }]}>{startTimeLabel}</Text>
-                                </TouchableOpacity>
-
-                                <Text style={styles.timeLabel}>{isRTL ? 'الى' : 'To'}</Text>
                                 <TouchableOpacity
                                     style={[styles.timePicker, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                                     onPress={() => togglePicker('endTime')}
@@ -292,6 +285,16 @@ export const EditEventModal: React.FC<EditEventModalProps> = ({
                                     <Clock size={16} color="#526477" />
                                     <Text style={[styles.timeText, { marginHorizontal: 4 }]}>{endTimeLabel}</Text>
                                 </TouchableOpacity>
+                                <Text style={styles.timeLabel}>{isRTL ? 'الى' : 'To'}</Text>
+                                <TouchableOpacity
+                                    style={[styles.timePicker, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                                    onPress={() => togglePicker('startTime')}
+                                >
+                                    <Clock size={16} color="#526477" />
+                                    <Text style={[styles.timeText, { marginHorizontal: 4 }]}>{startTimeLabel}</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.timeLabel}>{isRTL ? 'من' : 'From'}</Text>
+
                             </View>
 
                             {activePicker === 'startTime' && (

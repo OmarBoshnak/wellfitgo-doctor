@@ -14,8 +14,8 @@ import {
     Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { isRTL } from '@/src/core/i18n';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
+import { isRTL } from '@/src/i18n';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 

@@ -129,7 +129,7 @@ export function ClientsAttentionSection({
 
     return (
         <View style={styles.sectionCard}>
-            <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.needsAttention}</Text>
                 <TouchableOpacity onPress={onViewAll}>
                     <Text style={styles.viewAllText}>{t.viewAll}</Text>
@@ -143,7 +143,7 @@ export function ClientsAttentionSection({
                         key={client.id}
                         style={[
                             styles.clientRow,
-                            { flexDirection: isRTL ? 'row' : 'row-reverse' },
+                            { flexDirection: isRTL ? 'row-reverse' : 'row' },
                             { borderLeftColor: statusColors.border, borderLeftWidth: isRTL ? 0 : 3 },
                             { borderRightColor: statusColors.border, borderRightWidth: isRTL ? 3 : 0 },
                         ]}
@@ -167,12 +167,12 @@ export function ClientsAttentionSection({
                             </View>
                         )}
                         <View style={styles.clientInfo}>
-                            <View style={{ flexDirection: isRTL ? 'row' : 'row-reverse' }}>
+                            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                 <Text style={[styles.clientName, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {translateName(client.name)}
                                 </Text>
                             </View>
-                            <View style={[styles.statusRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <View style={[styles.statusRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                 <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
                                     <Text style={[styles.statusText, { color: statusColors.text }]}>
                                         {client.status}
@@ -182,7 +182,7 @@ export function ClientsAttentionSection({
                                     <Text style={styles.feelingEmoji}>{client.feeling}</Text>
                                 )}
                             </View>
-                            <View style={{ flexDirection: isRTL ? 'row' : 'row-reverse', paddingHorizontal: horizontalScale(10) }}>
+                            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', paddingHorizontal: horizontalScale(10) }}>
                                 {client.lastActive && (
                                     <Text style={[styles.lastActiveText, { textAlign: isRTL ? 'right' : 'left' }]}>
                                         {t.lastActive} {client.lastActive}

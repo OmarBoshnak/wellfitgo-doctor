@@ -36,7 +36,7 @@ export const DayViewHeader: React.FC<DayViewHeaderProps> = ({
             style={styles.container}
         >
             {/* Top Navigation */}
-            <View style={[styles.nav, { flexDirection: isRTL ? 'row-reverse' : 'row' }, style]}>
+            <View style={[styles.nav, { flexDirection: isRTL ? 'row' : 'row-reverse' }, style]}>
                 <TouchableOpacity
                     style={styles.navButton}
                     onPress={() => router.back()}

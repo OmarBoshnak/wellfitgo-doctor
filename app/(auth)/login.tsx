@@ -89,7 +89,7 @@ export default function LoginScreen() {
 
             // Navigate to OTP verification screen with parameters
             router.push({
-                pathname: '/(auth)/PhoneVerificationScreen',
+                pathname: '/(auth)/phone-verification',
                 params: {
                     userId: result.data.userId,
                     phone: fullPhoneNumber
@@ -133,7 +133,7 @@ export default function LoginScreen() {
             Alert.alert('نجاح', 'تم تسجيل الدخول بنجاح');
 
             if (user.status === 'pending' || !user.status) {
-                router.replace('/(auth)/ApprovalPendingScreen');
+                router.replace('/(auth)/approval-pending');
             } else if (user.status === 'rejected') {
                 Alert.alert('تنبيه', 'تم رفض طلب حسابك. يرجى الاتصال بالدعم.');
                 await AuthService.logout();
@@ -155,7 +155,7 @@ export default function LoginScreen() {
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
 
-                <Image source={require('../../../assets/Wellfitgo.png')} style={styles.logo} />
+                <Image source={require('../../assets/Wellfitgo.png')} style={styles.logo} />
 
                 {/* Title */}
                 <Text style={styles.title}>تسجيل الدخول</Text>

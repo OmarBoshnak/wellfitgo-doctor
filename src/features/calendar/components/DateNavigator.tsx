@@ -29,9 +29,9 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
         <View style={[styles.container, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
             <TouchableOpacity
                 style={styles.arrowButton}
-                onPress={isRTL ? onPrevious : onNext}
+                onPress={isRTL ? onNext : onPrevious}
             >
-                <ChevronRight
+                <ChevronLeft
                     size={horizontalScale(20)}
                     color={colors.textSecondary}
                 />
@@ -52,9 +52,9 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
 
             <TouchableOpacity
                 style={styles.arrowButton}
-                onPress={isRTL ? onNext : onPrevious}
+                onPress={isRTL ? onPrevious : onNext}
             >
-                <ChevronLeft
+                <ChevronRight
                     size={horizontalScale(20)}
                     color={colors.textSecondary}
                 />

@@ -29,14 +29,14 @@ function AuthStateListener({ children }: { children: React.ReactNode }) {
     if (!isInitialized || isLoading) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    const isOnApprovalScreen = segments.join('/').includes('ApprovalPendingScreen');
+    const isOnApprovalScreen = segments.join('/').includes('approval-pending');
 
     if (isAuthenticated && inAuthGroup) {
       // Check if user is pending approval - they should stay on approval screen
       if (user?.status === 'pending' || !user?.status) {
         // If user is pending but NOT on approval screen, redirect them there
         if (!isOnApprovalScreen) {
-          router.replace("/(auth)/ApprovalPendingScreen");
+          router.replace("/(auth)/approval-pending");
         }
         // Otherwise, let them stay on the approval screen
       } else if (user?.status === 'active') {
@@ -46,7 +46,7 @@ function AuthStateListener({ children }: { children: React.ReactNode }) {
       // For rejected status, they'll be handled by the login screen
     } else if (!isAuthenticated && !inAuthGroup && segments[0] !== undefined) {
       // User is not signed in but trying to access protected route
-      router.replace("/(auth)/LoginScreen");
+      router.replace("/(auth)/login");
     }
   }, [isAuthenticated, isInitialized, isLoading, segments, router, user]);
 
@@ -74,16 +74,10 @@ export default function RootLayout() {
             headerShown: false,
           }}
         >
-          <Stack.Screen
-            name="SplashScreen"
-            options={{
-              headerShown: false,
-              gestureEnabled: false,
-            }}
-          />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="doctor" options={{ headerShown: false }} />
           <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+          <Stack.Screen name="index" options={{ headerShown: false }} />
         </Stack>
       </AuthStateListener>
     </Provider>

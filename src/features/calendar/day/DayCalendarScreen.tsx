@@ -75,11 +75,19 @@ export const DayCalendarScreen: React.FC = () => {
         return `${year}-${month}-${day}`;
     }, [currentDate]);
 
-    // Fetch events from backend - mocked
+    // Fetch events from backend
     useEffect(() => {
-        // Simulate fetch
-        const { getDynamicMockEvents } = require('../mock');
-        setConvexEvents(getDynamicMockEvents(isoDate, isoDate));
+        const fetchEvents = async () => {
+            try {
+                const { appointmentService } = await import('@/src/shared/services/appointment.service');
+                const data = await appointmentService.getAppointments(isoDate, isoDate);
+                setConvexEvents(data);
+            } catch (error) {
+                console.error('[DayCalendarScreen] Error fetching events:', error);
+                setConvexEvents([]);
+            }
+        };
+        fetchEvents();
     }, [isoDate]);
 
     // Fetch selected client profile for modal - mocked

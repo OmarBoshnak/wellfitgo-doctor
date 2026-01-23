@@ -59,7 +59,7 @@ export default function ApprovalPendingScreen() {
     const handleLogout = async () => {
         try {
             await dispatch(logout()).unwrap();
-            router.replace('/(auth)/LoginScreen');
+            router.replace('/(auth)/login');
         } catch (error) {
             console.error('Logout error:', error);
             Alert.alert('Error', 'Failed to logout.');

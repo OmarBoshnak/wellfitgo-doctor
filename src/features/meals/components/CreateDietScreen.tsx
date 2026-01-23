@@ -218,7 +218,7 @@ const FoodItem = ({ item, onRemove }: FoodItemProps) => (
     <View style={[styles.foodItem, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
         <View style={[styles.foodItemContent, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
             <View style={styles.foodItemDot} />
-            <Text style={[styles.foodItemText, { textAlign: isRTL ? 'left' : 'right' }]}>
+            <Text style={[styles.foodItemText, { textAlign: isRTL ? 'right' : 'left' }]}>
                 {item.text}{item.textEn ? ` (${item.textEn})` : ''}
             </Text>
         </View>
@@ -241,9 +241,6 @@ const CategoryCard = ({ category, onEditName, onDeleteCategory, onAddFood, onRem
     <View style={styles.categoryCard}>
         {/* Category Header */}
         <View style={[styles.categoryHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            <Text style={styles.categoryTitle}>
-                {category.emoji || '📋'} {category.nameAr || category.name} ({category.name})
-            </Text>
             <View style={[styles.categoryActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                 <TouchableOpacity style={styles.categoryActionButton} onPress={onEditName}>
                     <Pencil size={horizontalScale(16)} color={colors.textSecondary} />
@@ -252,6 +249,9 @@ const CategoryCard = ({ category, onEditName, onDeleteCategory, onAddFood, onRem
                     <Trash2 size={horizontalScale(16)} color="#EF4444" />
                 </TouchableOpacity>
             </View>
+            <Text style={styles.categoryTitle}>
+                {category.emoji || '📋'} {category.nameAr || category.name} ({category.name})
+            </Text>
         </View>
 
         {/* Food Items */}
@@ -267,7 +267,7 @@ const CategoryCard = ({ category, onEditName, onDeleteCategory, onAddFood, onRem
 
         {/* Add Food Item Button */}
         <TouchableOpacity
-            style={[styles.addItemButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+            style={[styles.addItemButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
             onPress={onAddFood}
         >
             <Plus size={horizontalScale(18)} color={colors.primaryDark} />
@@ -313,27 +313,29 @@ const MealCard = ({
                 onPress={onToggle}
                 activeOpacity={0.7}
             >
-                <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
-                    <Text style={[styles.mealTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
-                        {meal.emoji || '🍽️'} {meal.nameAr || meal.name} ({meal.name})
-                    </Text>
-                    <Text style={styles.mealSubtitle}>
-                        • {optionsCount} {t.optionsAvailable}
-                    </Text>
-                </View>
                 <View style={[styles.mealActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    {isExpanded ? (
+                        <ChevronUp size={horizontalScale(20)} color={colors.textSecondary} />
+                    ) : (
+                        <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
+                    )}
+
                     <TouchableOpacity style={styles.mealActionButton} onPress={onEditName}>
                         <Pencil size={horizontalScale(20)} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.mealActionButton} onPress={onDelete}>
                         <Trash2 size={horizontalScale(20)} color={colors.textSecondary} />
                     </TouchableOpacity>
-                    {isExpanded ? (
-                        <ChevronUp size={horizontalScale(20)} color={colors.textSecondary} />
-                    ) : (
-                        <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
-                    )}
                 </View>
+                <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+                    <Text style={[styles.mealTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                        {meal.emoji || '🍽️'} {meal.nameAr || meal.name} ({meal.name})
+                    </Text>
+                    <Text style={styles.mealSubtitle}>
+                        • {optionsCount} {t.optionsAvailable}
+                    </Text>
+                </View>
+
             </TouchableOpacity>
 
             {/* Expanded Content */}
@@ -763,6 +765,14 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
         <SafeAreaView edges={['left', 'right']} style={styles.container}>
             {/* Header */}
             <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse', paddingTop: insets.top }]}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <BackArrow />
+                </TouchableOpacity>
+
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                    {t.createDiet}
+                </Text>
+
                 <TouchableOpacity onPress={handleSave} activeOpacity={0.9} disabled={isSaving}>
                     <LinearGradient
                         colors={isSaving ? ['#E1E8EF', '#E1E8EF'] : gradients.primary}
@@ -777,15 +787,10 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         )}
                     </LinearGradient>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                    {t.createDiet}
-                </Text>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <BackArrow />
-                </TouchableOpacity>
+
             </View>
 
-            <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1, paddingHorizontal: horizontalScale(10) }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1, paddingBottom: verticalScale(30) }} showsVerticalScrollIndicator={false}>
                 {/* Basic Info Section */}
                 <View style={styles.section}>
                     <TouchableOpacity
@@ -793,28 +798,29 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         onPress={() => setBasicInfoOpen(!basicInfoOpen)}
                         activeOpacity={0.7}
                     >
-                        <View style={[styles.sectionHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <View style={styles.sectionIcon}>
-                                <Info size={horizontalScale(20)} color={colors.primaryDark} />
-                            </View>
-                            <Text style={styles.sectionTitle}>{t.basicInfo}</Text>
-                        </View>
                         {basicInfoOpen ? (
                             <ChevronUp size={horizontalScale(20)} color={colors.textSecondary} />
                         ) : (
                             <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
                         )}
+                        <View style={[styles.sectionHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <Text style={styles.sectionTitle}>{t.basicInfo}</Text>
+                            <View style={styles.sectionIcon}>
+                                <Info size={horizontalScale(20)} color={colors.primaryDark} />
+                            </View>
+                        </View>
+
                     </TouchableOpacity>
 
                     {basicInfoOpen && (
                         <View style={styles.sectionContent}>
                             {/* Plan Name Input */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {t.planName}
                                 </Text>
                                 <TextInput
-                                    style={[styles.inputSimple, { textAlign: isRTL ? 'left' : 'right' }]}
+                                    style={[styles.inputSimple, { textAlign: isRTL ? 'right' : 'left' }]}
                                     value={name}
                                     onChangeText={setName}
                                     placeholder={t.enterPlanName}
@@ -824,7 +830,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
                             {/* Calorie Range Input */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {t.calorieRange}
                                 </Text>
                                 <View style={styles.inputContainer}>
@@ -842,7 +848,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
                             {/* Goal Description Input */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                     {t.goalDescription}
                                 </Text>
                                 <TextInput
@@ -856,23 +862,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
                             {/* Meals Per Day Stepper */}
                             <View style={[styles.stepperRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                <View style={[styles.stepperLabel, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                    <UtensilsCrossed size={horizontalScale(20)} color={colors.textSecondary} />
-                                    <Text style={styles.stepperText}>{t.mealsPerDay}</Text>
-                                </View>
                                 <View style={styles.stepperControls}>
-                                    <TouchableOpacity
-                                        style={styles.stepperButton}
-                                        onPress={() => {
-                                            if (localMeals.length > 1) {
-                                                // Remove the last meal
-                                                setLocalMeals(prev => prev.slice(0, -1));
-                                            }
-                                        }}
-                                    >
-                                        <Minus size={horizontalScale(18)} color={colors.textSecondary} />
-                                    </TouchableOpacity>
-                                    <Text style={styles.stepperValue}>{localMeals.length}</Text>
                                     <TouchableOpacity
                                         style={styles.stepperButtonActive}
                                         onPress={() => {
@@ -898,7 +888,25 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                                     >
                                         <Plus size={horizontalScale(18)} color="#FFFFFF" />
                                     </TouchableOpacity>
+                                    <Text style={styles.stepperValue}>{localMeals.length}</Text>
+                                    <TouchableOpacity
+                                        style={styles.stepperButton}
+                                        onPress={() => {
+                                            if (localMeals.length > 1) {
+                                                // Remove the last meal
+                                                setLocalMeals(prev => prev.slice(0, -1));
+                                            }
+                                        }}
+                                    >
+                                        <Minus size={horizontalScale(18)} color={colors.textSecondary} />
+                                    </TouchableOpacity>
+
                                 </View>
+                                <View style={[styles.stepperLabel, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                    <Text style={styles.stepperText}>{t.mealsPerDay}</Text>
+                                    <UtensilsCrossed size={horizontalScale(20)} color={colors.textSecondary} />
+                                </View>
+
                             </View>
                         </View>
                     )}
@@ -907,10 +915,10 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                 {/* Meal Plan Editor */}
                 <View style={styles.mealEditorSection}>
                     <View style={[styles.mealEditorHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.mealEditorTitle}>{t.mealPlanEditor}</Text>
                         <TouchableOpacity onPress={handleExpandAll}>
                             <Text style={styles.expandAllText}>{t.expandAll}</Text>
                         </TouchableOpacity>
+                        <Text style={styles.mealEditorTitle}>{t.mealPlanEditor}</Text>
                     </View>
 
                     {/* Meals */}
@@ -993,7 +1001,7 @@ const styles = StyleSheet.create({
     // Header
     header: {
         backgroundColor: colors.bgPrimary,
-        paddingHorizontal: horizontalScale(16),
+        paddingHorizontal: horizontalScale(10),
         paddingVertical: verticalScale(12),
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -1031,6 +1039,7 @@ const styles = StyleSheet.create({
     // Content
     content: {
         flex: 1,
+        paddingHorizontal: horizontalScale(10)
     },
     // Section
     section: {
@@ -1066,7 +1075,7 @@ const styles = StyleSheet.create({
         color: colors.textPrimary,
     },
     sectionContent: {
-        paddingHorizontal: horizontalScale(16),
+        paddingHorizontal: horizontalScale(10),
         paddingBottom: horizontalScale(20),
         paddingTop: horizontalScale(4),
         borderTopWidth: 1,
@@ -1244,7 +1253,7 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: colors.textPrimary,
         flex: 1,
-        textAlign: 'left',
+        textAlign: 'right',
     },
     categoryActions: {
         alignItems: 'center',

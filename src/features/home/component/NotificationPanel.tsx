@@ -2,7 +2,7 @@
  * NotificationPanel - Facebook-style notification dropdown
  * Shows unread messages and weight log updates from clients
  */
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
     View,
     Text,
@@ -12,29 +12,19 @@ import {
     FlatList,
     Image,
     Pressable,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { colors } from '@/src/core/constants/Theme';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { isRTL } from '@/src/core/constants/translation';
+import { useNotifications, NotificationItem } from '../hooks/useNotifications';
 
 interface NotificationPanelProps {
     visible: boolean;
     onClose: () => void;
     onNotificationPress?: (notification: NotificationItem) => void;
-}
-
-interface NotificationItem {
-    id: string;
-    type: 'message' | 'weight_log';
-    title: string;
-    subtitle: string;
-    avatar?: string;
-    timestamp: number;
-    relativeTime: string;
-    isRead: boolean;
-    data: Record<string, unknown>;
 }
 
 // Translation strings
@@ -51,23 +41,15 @@ export function NotificationPanel({
     onClose,
     onNotificationPress
 }: NotificationPanelProps) {
-    // Local state for notifications
-    const [notificationsData, setNotificationsData] = useState<{ notifications: NotificationItem[] } | undefined>(undefined);
+    // Use the notifications hook for backend integration
+    const { notifications, isLoading, markAsRead, markAllAsRead, refetch } = useNotifications();
 
-    // Fetch notifications on mount
-    useEffect(() => {
-        const fetchNotifications = async () => {
-            try {
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-                setNotificationsData({ notifications: [] });
-            }
-        };
-        fetchNotifications();
-    }, []);
-
-    const notifications = notificationsData?.notifications || [];
-    const isLoading = notificationsData === undefined;
+    // Refetch when panel becomes visible
+    React.useEffect(() => {
+        if (visible) {
+            refetch();
+        }
+    }, [visible, refetch]);
 
     // Get icon based on notification type
     const getNotificationIcon = (type: 'message' | 'weight_log') => {
@@ -182,7 +164,7 @@ export function NotificationPanel({
                 {/* Notification List */}
                 {isLoading ? (
                     <View style={styles.loadingContainer}>
-                        <Text style={styles.loadingText}>...</Text>
+                        <ActivityIndicator size="small" color={colors.primary} />
                     </View>
                 ) : notifications.length === 0 ? (
                     <EmptyState />

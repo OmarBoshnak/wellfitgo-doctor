@@ -144,7 +144,7 @@ export function AppointmentsSection({
 
     return (
         <View style={styles.sectionCard}>
-            <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.todaysAppointments}</Text>
                 <TouchableOpacity onPress={onAddPress}>
                     <Text style={styles.viewAllText}>{t.viewAll}</Text>
@@ -162,7 +162,7 @@ export function AppointmentsSection({
                         key={apt.id}
                         style={[
                             styles.appointmentRow,
-                            { flexDirection: isRTL ? 'row' : 'row-reverse' },
+                            { flexDirection: isRTL ? 'row-reverse' : 'row' },
                             { borderLeftColor: statusStyle.borderColor },
                             { borderRightColor: statusStyle.borderColor },
                         ]}
@@ -185,7 +185,7 @@ export function AppointmentsSection({
                             <Text style={[styles.appointmentClientName, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {apt.clientName}
                             </Text>
-                            <View style={[styles.detailsRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <View style={[styles.detailsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                                 <Text style={styles.appointmentDuration}>{apt.duration}</Text>
                                 {statusLabel && (
                                     <View style={[styles.statusBadge, { backgroundColor: statusStyle.badgeBg }]}>
@@ -199,42 +199,14 @@ export function AppointmentsSection({
                         <View style={styles.appointmentTime}>
                             <Text style={styles.appointmentTimeText}>{apt.time}</Text>
                         </View>
-                        {showJoinButton ? (
-                            <TouchableOpacity
-                                style={[styles.joinButton, apt.status === 'in_progress' && styles.joinButtonActive]}
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    // Use phone call for phone type, regular call for video
-                                    if (apt.type === 'phone') {
-                                        onStartPhoneCall?.(apt);
-                                    } else {
-                                        onStartCall?.(apt);
-                                    }
-                                }}
-                            >
-                                <Text style={[styles.joinButtonText, apt.status === 'in_progress' && styles.joinButtonTextActive]}>
-                                    {at.joinCall}
-                                </Text>
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity
-                                style={[styles.appointmentTypeIcon, isRTL ? { marginLeft: horizontalScale(8) } : { marginRight: horizontalScale(8) }]}
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    if (apt.type === 'phone') {
-                                        onStartPhoneCall?.(apt);
-                                    } else {
-                                        onStartCall?.(apt);
-                                    }
-                                }}
-                            >
-                                {apt.type === 'video' ? (
-                                    <Video size={horizontalScale(18)} color="#2563EB" />
-                                ) : (
-                                    <Phone size={horizontalScale(18)} color="#16A34A" />
-                                )}
-                            </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                            style={[styles.appointmentTypeIcon]}
+                            onPress={(e) => {
+                            }}
+                        >
+                            <Phone size={horizontalScale(18)} color="#16A34A" />
+
+                        </TouchableOpacity>
                     </TouchableOpacity>
                 );
             })}
@@ -300,8 +272,9 @@ const styles = StyleSheet.create({
     appointmentTypeIcon: {
         width: horizontalScale(36),
         height: horizontalScale(36),
-        borderRadius: horizontalScale(8),
+        borderRadius: horizontalScale(20),
         backgroundColor: colors.bgSecondary,
+        marginHorizontal: horizontalScale(5),
         alignItems: 'center',
         justifyContent: 'center',
     },

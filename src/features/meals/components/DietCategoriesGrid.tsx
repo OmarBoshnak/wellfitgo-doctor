@@ -8,6 +8,8 @@ import { isRTL } from '@/src/core/constants/translation';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { useDietCategories, type DietCategory } from '../hooks/useDietCategories';
 import { usePlanMutations } from '../hooks/usePlanMutations';
+import { plansService } from '@/src/shared/services';
+
 
 const t = {
     categories: isRTL ? 'الفئات' : 'CATEGORIES',
@@ -45,8 +47,6 @@ interface Props {
     onCategoryPress?: (category: DietCategory) => void;
     onCreateCustom?: () => void;
     onDeleteCategory?: (categoryId: string) => void;
-    onRefresh?: () => void;
-    onRefreshComplete?: () => void;
     showHeader?: boolean;
 }
 
@@ -55,8 +55,6 @@ export default function DietCategoriesGrid({
     onCategoryPress,
     onCreateCustom,
     onDeleteCategory,
-    onRefresh,
-    onRefreshComplete,
     showHeader = true
 }: Props) {
     // ============ NAVIGATION ============
@@ -76,20 +74,9 @@ export default function DietCategoriesGrid({
     const isLoading = propCategories ? false : hookLoading;
     const { deleteDietCategory } = usePlanMutations();
 
-    // Handle refresh from parent - call refetch when parent triggers refresh
-    useEffect(() => {
-        if (onRefresh) {
-            // When component mounts or key changes, refetch
-            refetch();
-        }
-    }, []);
+
 
     // Notify parent when loading completes
-    useEffect(() => {
-        if (!isLoading && onRefreshComplete) {
-            onRefreshComplete();
-        }
-    }, [isLoading, onRefreshComplete]);
 
     // Search effect - debounced search when query changes
     useEffect(() => {
@@ -101,26 +88,7 @@ export default function DietCategoriesGrid({
         const searchPlans = async () => {
             setIsSearching(true);
             try {
-                // Mock search simulation
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Import mock data dynamically or assume it's available
-                const { MOCK_DIET_PLANS } = require('../data/mockData');
-
-                const lowerQuery = searchQuery.toLowerCase();
-                const results = MOCK_DIET_PLANS.filter((plan: any) =>
-                    plan.name.toLowerCase().includes(lowerQuery) ||
-                    (plan.nameAr && plan.nameAr.toLowerCase().includes(lowerQuery)) ||
-                    (plan.description && plan.description.toLowerCase().includes(lowerQuery))
-                ).map((plan: any) => ({
-                    id: plan.id,
-                    name: plan.name,
-                    nameAr: plan.nameAr,
-                    emoji: plan.emoji,
-                    targetCalories: plan.targetCalories,
-                    type: plan.type
-                }));
-
+                const results = await plansService.searchDietPlans(searchQuery);
                 setSearchResults(results);
             } catch (error) {
                 console.error('Error searching plans:', error);
@@ -173,16 +141,16 @@ export default function DietCategoriesGrid({
     const handleDietPress = useCallback((diet: { id: string; name: string; targetCalories?: number }) => {
         setShowSearchModal(false);
         setSearchQuery('');
-        router.push({
-            pathname: '/doctor/diet-details',
-            params: {
-                dietId: diet.id,
-                dietRange: diet.targetCalories?.toString() ?? '',
-                dietDescription: '',
-                categoryName: '',
-                categoryEmoji: '',
-            },
-        });
+        // router.push({
+        //     pathname: '/doctor/diet-details',
+        //     params: {
+        //         dietId: diet.id,
+        //         dietRange: diet.targetCalories?.toString() ?? '',
+        //         dietDescription: '',
+        //         categoryName: '',
+        //         categoryEmoji: '',
+        //     },
+        // });
     }, [router]);
 
     const renderIcon = (category: DietCategory) => {
@@ -315,10 +283,6 @@ export default function DietCategoriesGrid({
 
     const renderHeader = () => (
         <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
-                <Text style={styles.headerLabel}>{t.categories}</Text>
-                <Text style={styles.headerText}>{t.chooseCategory}</Text>
-            </View>
             <View style={[styles.headerButtons, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                 {/* Search Button */}
                 <TouchableOpacity
@@ -343,6 +307,11 @@ export default function DietCategoriesGrid({
                     </TouchableOpacity>
                 )}
             </View>
+            <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+                <Text style={styles.headerLabel}>{t.categories}</Text>
+                <Text style={styles.headerText}>{t.chooseCategory}</Text>
+            </View>
+
         </View>
     );
 
@@ -374,10 +343,10 @@ export default function DietCategoriesGrid({
                 <View style={styles.categoryInfo}>
                     {category.type === 'custom' ? (
                         <View style={[styles.categoryNameRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <Text style={styles.categoryName}>{category.name}</Text>
                             <View style={styles.customBadge}>
                                 <Text style={styles.customBadgeText}>{isRTL ? 'مخصص' : 'Custom'}</Text>
                             </View>
+                            <Text style={styles.categoryName}>{category.name}</Text>
                         </View>
                     ) : (
                         <Text style={styles.categoryName}>{category.name}</Text>
@@ -393,7 +362,7 @@ export default function DietCategoriesGrid({
             {/* Delete Button for Custom Categories */}
             {category.type === 'custom' && (
                 <TouchableOpacity
-                    style={[styles.deleteButton, { [isRTL ? 'right' : 'left']: horizontalScale(8) }]}
+                    style={[styles.deleteButton, { [isRTL ? 'left' : 'right']: horizontalScale(8) }]}
                     onPress={() => {
                         Alert.alert(
                             isRTL ? 'حذف الفئة' : 'Delete Category',

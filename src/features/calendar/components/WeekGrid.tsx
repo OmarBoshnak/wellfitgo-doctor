@@ -86,7 +86,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                     {/* Day Columns with Events */}
                     <View style={[
                         styles.columnsContainer,
-                        { flexDirection: isRTL ? 'row-reverse' : 'row' }
+                        { flexDirection: isRTL ? 'row' : 'row-reverse' }
                     ]}>
                         {displayDays.map((day, dayIndex) => (
                             <View

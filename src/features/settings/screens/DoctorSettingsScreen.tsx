@@ -35,34 +35,13 @@ import { ProfileService, DoctorProfile } from '@/src/shared/services/profile/pro
 import { AuthService } from '@/src/shared/services/auth/auth.service';
 import api from '@/src/shared/services/api/client';
 
+import { getDoctorProfileTranslations } from '@/src/features/settings/locales/doctor-profile.locale';
+
 // =============================================================================
 // TRANSLATIONS
 // =============================================================================
 
-const t = {
-    // Header
-    registeredDietitian: isRTL ? 'أخصائي تغذية معتمد' : 'Registered Dietitian',
-    activeClients: isRTL ? 'عميل نشط' : 'active clients',
-
-    // Section titles
-    account: isRTL ? 'الحساب' : 'Account',
-    work: isRTL ? 'العمل' : 'Work',
-    support: isRTL ? 'الدعم' : 'Support',
-    other: isRTL ? 'أخرى' : 'Other',
-
-    // Account items
-    editProfile: isRTL ? 'تعديل الملف الشخصي' : 'Edit Profile',
-    notifications: isRTL ? 'الإشعارات' : 'Notifications',
-    language: isRTL ? 'اللغة والمنطقة' : 'Language & Region',
-
-    // Actions
-    signOut: isRTL ? 'تسجيل الخروج' : 'Sign Out',
-    signOutConfirm: isRTL ? 'هل أنت متأكد من تسجيل الخروج؟' : 'Are you sure you want to sign out?',
-    cancel: isRTL ? 'إلغاء' : 'Cancel',
-
-    // Loading
-    loading: isRTL ? 'جاري التحميل...' : 'Loading...',
-};
+const t = getDoctorProfileTranslations();
 
 // =============================================================================
 // TYPES
@@ -441,7 +420,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 10,
-        left: 0,
         width: horizontalScale(28),
         height: horizontalScale(28),
         borderRadius: horizontalScale(14),

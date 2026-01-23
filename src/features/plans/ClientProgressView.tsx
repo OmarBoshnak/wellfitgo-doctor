@@ -23,6 +23,8 @@ import { isRTL } from '@/src/core/constants/translation';
 import { colors, gradients, shadows } from '@/src/core/constants/Theme';
 import ProgressChart from '../meals/components/ProgressChart';
 import DayScroller from '../meals/components/DayScroller';
+import { plansService } from '@/src/shared/services';
+
 
 // Translations
 const t = {
@@ -162,7 +164,73 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
     useEffect(() => {
         const fetchProgress = async () => {
             try {
+                // 1. Get client's active plan
+                const clients = await plansService.getClientsForAssignment();
+                const clientStatus = clients.find(c => c.id === clientId);
+
+                if (!clientStatus?.hasActivePlan) {
+                    setPlanProgress(null);
+                    return;
+                }
+
+                // 2. Fetch the plan details (We need the actual assigned plan ID or program ID)
+                // Since getClientsForAssignment only gives status, let's use getActivePlans to find the full record
+                const activePlans = await plansService.getActivePlans();
+                const userPlan = activePlans.find(p => p.clientId === clientId);
+
+                if (!userPlan) {
+                    setPlanProgress(null);
+                    return;
+                }
+
+                // 3. For now, we simulate the detailed view based on the program name
+                // In a real app, we would fetch a specific 'MealLog' or 'DailyPlan' endpoint
+                // which I haven't implemented fully in the backend yet.
+                // So I will construct the view data from the userPlan summary.
+
+                // Mocking the daily meals structure for display purposes 
+                // until backend 'Daily Plan' endpoint is ready.
+                const mockDays = Array.from({ length: 7 }, (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - d.getDay() + i); // Current week
+                    const isToday = i === new Date().getDay();
+                    return {
+                        date: d.toISOString().split('T')[0],
+                        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                        labelAr: d.toLocaleDateString('ar-EG', { weekday: 'short' }),
+                        isToday: isToday,
+                        status: isToday ? 'active' : (i < new Date().getDay() ? 'completed' : 'upcoming')
+                    };
+                });
+
+                const mealsForDay = [
+                    { id: '1', name: 'Oatmeal & Berries', nameAr: 'شوفان وتوت', time: '08:00', isCompleted: true, completedAt: Date.now() - 100000 },
+                    { id: '2', name: 'Grilled Chicken Salad', nameAr: 'سلطة دجاج مشوي', time: '13:00', isCompleted: false },
+                    { id: '3', name: 'Greek Yogurt', nameAr: 'زبادي يوناني', time: '16:00', isCompleted: false },
+                    { id: '4', name: 'Salmon with Quinoa', nameAr: 'سلمون مع كينوا', time: '19:00', isCompleted: false },
+                ];
+
+                setPlanProgress({
+                    plan: {
+                        name: userPlan.dietProgram,
+                        nameAr: userPlan.dietProgram, // Fallback
+                        emoji: '🥗', // Generic
+                        startDate: userPlan.startDate,
+                        assignedDate: userPlan.startDate,
+                        currentWeek: userPlan.weekNumber,
+                        totalWeeks: 4, // Default
+                    },
+                    weeklyStats: {
+                        completedMeals: userPlan.mealsCompleted,
+                        totalMeals: userPlan.totalMeals
+                    },
+                    days: mockDays,
+                    meals: mealsForDay
+                });
+
             } catch (error) {
+                console.error('Error fetching client progress:', error);
+                setPlanProgress(null);
             }
         };
         fetchProgress();

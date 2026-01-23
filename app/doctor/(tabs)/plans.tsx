@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,7 +7,6 @@ import { CheckCircle, BarChart3, AlertCircle, AlertTriangle } from 'lucide-react
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import {
     DietCategoriesGrid,
-    AssignClientModal,
     CreateCategoryModal,
     useDoctorPlans,
     useDoctorPlansMutations,
@@ -63,16 +63,11 @@ type ProgramsViewType = 'categories' | 'ranges' | 'details' | 'edit' | 'editMeal
 export default function PlansScreen() {
     const insets = useSafeAreaInsets();
     const [activeTab, setActiveTab] = useState<TabType>('active');
-    const [programsView, setProgramsView] = useState<ProgramsViewType>('categories');
-    const [selectedCategory, setSelectedCategory] = useState<any>(null);
-    const [selectedDiet, setSelectedDiet] = useState<any>(null);
-    const [selectedMeal, setSelectedMeal] = useState<any>(null);
     const [selectedPlan, setSelectedPlan] = useState<DoctorPlanItem | null>(null);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [showClientProgress, setShowClientProgress] = useState(false);
     const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
     const [categoriesRefreshKey, setCategoriesRefreshKey] = useState(0);
-    const [isProgramsRefreshing, setIsProgramsRefreshing] = useState(false);
 
     // ============ CONVEX DATA HOOKS ============
     const {
@@ -86,36 +81,7 @@ export default function PlansScreen() {
     } = useDoctorPlans();
     const { deleteDraft } = useDoctorPlansMutations();
 
-    const handleCategorySelect = (category: any) => {
-        setSelectedCategory(category);
-        setProgramsView('ranges');
-    };
 
-    const handleDietView = (diet: any) => {
-        setSelectedDiet(diet);
-        setProgramsView('details');
-    };
-
-    const handleAssign = (diet?: any) => {
-        if (diet) setSelectedDiet(diet);
-        setShowAssignModal(true);
-    };
-
-    const handleDietEdit = (diet: any) => {
-        setSelectedDiet(diet);
-        setProgramsView('edit');
-    };
-
-    const handleMealEdit = (meal: any) => {
-        setSelectedMeal(meal);
-        setProgramsView('editMeal');
-    };
-
-    const handleAssignComplete = (selectedClients: string[]) => {
-        console.log('Assigned diet to clients:', selectedClients);
-        setShowAssignModal(false);
-        setProgramsView('categories');
-    };
 
     const handleViewPlanDetails = (plan: any) => {
         setSelectedPlan(plan);
@@ -169,8 +135,10 @@ export default function PlansScreen() {
 
                 <View style={styles.planContent}>
                     {/* Header */}
-                    <View style={[styles.planHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.planHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <View style={[styles.clientRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <Text style={styles.clientName}>{plan.clientName}</Text>
+
                             {plan.avatar ? (
                                 <Image source={{ uri: plan.avatar }} style={styles.avatar} />
                             ) : (
@@ -180,7 +148,6 @@ export default function PlansScreen() {
                                     </Text>
                                 </View>
                             )}
-                            <Text style={styles.clientName}>{plan.clientName}</Text>
                         </View>
                         {plan.status === 'paused' ? (
                             <View style={styles.pausedBadge}>
@@ -199,12 +166,12 @@ export default function PlansScreen() {
                     </View>
 
                     {/* Diet Program */}
-                    <Text style={[styles.dietProgram, { textAlign: isRTL ? 'left' : 'right' }]}>
+                    <Text style={[styles.dietProgram, { textAlign: isRTL ? 'right' : 'left' }]}>
                         {plan.dietProgram}
                     </Text>
 
                     {/* Week Info */}
-                    <View style={[styles.weekRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.weekRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <Text style={styles.weekText}>
                             {t.week} {plan.weekNumber} {plan.statusMessage === 'finishing' ? t.finishing : t.of + ' ' + t.ongoing}
                         </Text>
@@ -227,16 +194,16 @@ export default function PlansScreen() {
                                 <View style={[styles.progressFillEmpty, { width: '0%' }]} />
                             )}
                         </View>
-                        <Text style={[styles.progressText, { textAlign: isRTL ? 'left' : 'right' }]}>
+                        <Text style={[styles.progressText, { textAlign: isRTL ? 'right' : 'left' }]}>
                             {plan.mealsCompleted}/{plan.totalMeals} {t.meals}
                         </Text>
                     </View>
 
                     {/* Stats Row */}
-                    <View style={[styles.statsRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.statsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         {plan.status === 'good' && plan.mealsCompleted > 0 && (
                             <>
-                                <View style={[styles.statItem, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <View style={[styles.statItem, { flexDirection: isRTL ? 'row-reverse' : 'row-reverse' }]}>
                                     <CheckCircle size={horizontalScale(14)} color="#27AE61" />
                                     <Text style={[styles.statText, { color: '#27AE61' }]}>
                                         {plan.statusMessage === 'finishing' ? t.almostDone : `${plan.mealsCompleted}/${plan.totalMeals} ${t.meals}`}
@@ -300,7 +267,7 @@ export default function PlansScreen() {
             <Text style={styles.emptyTitle}>{activeTab === 'active' ? t.noActivePlans : t.noDrafts}</Text>
             <Text style={styles.emptyText}>{t.assignDietPrograms}</Text>
             {activeTab === 'active' && (
-                <TouchableOpacity style={styles.browseButton} onPress={() => { setActiveTab('programs'); setProgramsView('categories'); }}>
+                <TouchableOpacity style={styles.browseButton} onPress={() => { setActiveTab('programs'); }}>
                     <Text style={styles.browseButtonText}>{t.browsePrograms}</Text>
                 </TouchableOpacity>
             )}
@@ -310,23 +277,23 @@ export default function PlansScreen() {
     const renderDraftCard = (draft: DraftPlanItem) => (
         <View key={draft.id} style={styles.draftCard}>
             {/* Title */}
-            <Text style={[styles.draftTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
+            <Text style={[styles.draftTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
                 {draft.title}
             </Text>
 
             {/* Details */}
             <View style={styles.draftDetails}>
-                <Text style={[styles.draftBasedOn, { textAlign: isRTL ? 'left' : 'right' }]}>
+                <Text style={[styles.draftBasedOn, { textAlign: isRTL ? 'right' : 'left' }]}>
                     {t.basedOn}: {draft.basedOn}
                 </Text>
-                <Text style={[styles.draftLastEdited, { textAlign: isRTL ? 'left' : 'right' }]}>
+                <Text style={[styles.draftLastEdited, { textAlign: isRTL ? 'right' : 'left' }]}>
                     {t.lastEdited}: {draft.lastEditedHours} {t.hoursAgo}
                 </Text>
             </View>
 
             {/* Progress */}
             <View style={styles.draftProgressSection}>
-                <View style={[styles.draftProgressHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                <View style={[styles.draftProgressHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                     <Text style={styles.draftProgressLabel}>{t.progress}</Text>
                     <Text style={styles.draftProgressPercent}>{draft.progressPercent}% {t.complete}</Text>
                 </View>
@@ -341,7 +308,7 @@ export default function PlansScreen() {
             </View>
 
             {/* Action Buttons */}
-            <View style={[styles.draftActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.draftActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <TouchableOpacity
                     style={styles.deleteButton}
                     onPress={() => deleteDraft(draft.id)}
@@ -369,7 +336,6 @@ export default function PlansScreen() {
                 style={styles.tab}
                 onPress={() => {
                     setActiveTab(tab);
-                    if (tab === 'programs') setProgramsView('categories');
                 }}
             >
                 {isActive ? (
@@ -399,34 +365,33 @@ export default function PlansScreen() {
     return (
         <SafeAreaView edges={['left', 'right']} style={styles.container}>
             {/* Header */}
-            <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse', paddingTop: insets.top }]}>
+            <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row', paddingTop: insets.top }]}>
                 <Text style={styles.title}>{t.plans}</Text>
             </View>
 
             {/* Tabs */}
             <View style={styles.tabsContainer}>
                 <View style={[styles.tabsRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    {renderTab('active', t.activePlans, activePlansCount)}
-                    {renderTab('drafts', t.drafts, draftPlansCount)}
                     {renderTab('programs', t.dietPrograms)}
+                    {renderTab('drafts', t.drafts, draftPlansCount)}
+                    {renderTab('active', t.activePlans, activePlansCount)}
+
                 </View>
             </View>
 
-            {/* Content - Using FlatList as main scroll container to avoid VirtualizedLists nesting warning */}
-            <FlatList
-                data={[]}
-                renderItem={null}
+            {/* Content - Using Animated.ScrollView to match Dashboard */}
+            <Animated.ScrollView
+                entering={FadeIn.duration(400)}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.contentContainer}
                 refreshControl={
                     <RefreshControl
-                        refreshing={isRefreshing || isProgramsRefreshing}
+                        refreshing={isRefreshing}
                         onRefresh={() => {
                             // Trigger refresh based on active tab
                             if (activeTab === 'programs') {
-                                // For programs tab, set refreshing and increment key to trigger refetch
-                                setIsProgramsRefreshing(true);
+                                // For programs tab, only increment key to trigger refetch
                                 setCategoriesRefreshKey(prev => prev + 1);
                             } else {
                                 // For active and drafts tabs, call refetch
@@ -437,78 +402,65 @@ export default function PlansScreen() {
                         tintColor={colors.primaryDark}
                     />
                 }
-                ListHeaderComponent={
+            >
+                {activeTab === 'active' && (
                     <>
-                        {activeTab === 'active' && (
-                            <>
-                                {/* Section Header */}
-                                <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                    <Text style={styles.sectionTitle}>{t.activeClientPlans}</Text>
-                                    <TouchableOpacity style={[styles.categoryButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                        <Text style={styles.categoryButtonText}>{t.allCategories}</Text>
-                                    </TouchableOpacity>
-                                </View>
+                        {/* Section Header */}
+                        <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <TouchableOpacity disabled style={[styles.categoryButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <Text style={styles.categoryButtonText}>{t.allCategories}</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.sectionTitle}>{t.activeClientPlans}</Text>
+                        </View>
 
-                                {/* Loading / Plans List */}
-                                {isLoading ? (
-                                    <View style={styles.loadingContainer}>
-                                        <ActivityIndicator size="large" color={colors.primaryDark} />
-                                        <Text style={styles.loadingText}>{loadingText}</Text>
-                                    </View>
-                                ) : (activePlans && activePlans.length > 0) ? (
-                                    <View style={styles.plansList}>
-                                        {activePlans.map(renderActivePlanCard)}
-                                    </View>
-                                ) : renderEmptyState()}
-                            </>
-                        )}
-
-                        {activeTab === 'drafts' && (
-                            <>
-                                {/* Section Header */}
-                                <View style={styles.draftSectionHeader}>
-                                    <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
-                                        {t.draftPlans}
-                                    </Text>
-                                    <Text style={[styles.draftSectionDescription, { textAlign: isRTL ? 'left' : 'right' }]}>
-                                        {t.draftDescription}
-                                    </Text>
-                                </View>
-
-                                {/* Draft Plans List */}
-                                {isLoading ? (
-                                    <View style={styles.loadingContainer}>
-                                        <ActivityIndicator size="large" color={colors.primaryDark} />
-                                        <Text style={styles.loadingText}>{loadingText}</Text>
-                                    </View>
-                                ) : (draftPlans && draftPlans.length > 0) ? (
-                                    <View style={styles.plansList}>
-                                        {draftPlans.map(renderDraftCard)}
-                                    </View>
-                                ) : renderEmptyState()}
-                            </>
-                        )}
-
-                        {activeTab === 'programs' && (
-                            <DietCategoriesGrid
-                                key={categoriesRefreshKey}
-                                onCreateCustom={() => setShowCreateCategoryModal(true)}
-                                onDeleteCategory={handleDeleteCategory}
-                                onRefresh={() => setIsProgramsRefreshing(true)}
-                                onRefreshComplete={() => setIsProgramsRefreshing(false)}
-                            />
-                        )}
+                        {/* Loading / Plans List */}
+                        {isLoading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={colors.primaryDark} />
+                                <Text style={styles.loadingText}>{loadingText}</Text>
+                            </View>
+                        ) : (activePlans && activePlans.length > 0) ? (
+                            <View style={styles.plansList}>
+                                {activePlans.map(renderActivePlanCard)}
+                            </View>
+                        ) : renderEmptyState()}
                     </>
-                }
-            />
+                )}
 
-            {/* Assign Modal */}
-            <AssignClientModal
-                visible={showAssignModal}
-                diet={selectedDiet}
-                onClose={() => setShowAssignModal(false)}
-                onAssign={handleAssignComplete}
-            />
+                {activeTab === 'drafts' && (
+                    <>
+                        {/* Section Header */}
+                        <View style={styles.draftSectionHeader}>
+                            <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                {t.draftPlans}
+                            </Text>
+                            <Text style={[styles.draftSectionDescription, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                {t.draftDescription}
+                            </Text>
+                        </View>
+
+                        {/* Draft Plans List */}
+                        {isLoading ? (
+                            <View style={styles.loadingContainer}>
+                                <ActivityIndicator size="large" color={colors.primaryDark} />
+                                <Text style={styles.loadingText}>{loadingText}</Text>
+                            </View>
+                        ) : (draftPlans && draftPlans.length > 0) ? (
+                            <View style={styles.plansList}>
+                                {draftPlans.map(renderDraftCard)}
+                            </View>
+                        ) : renderEmptyState()}
+                    </>
+                )}
+
+                {activeTab === 'programs' && (
+                    <DietCategoriesGrid
+                        key={categoriesRefreshKey}
+                        onCreateCustom={() => setShowCreateCategoryModal(true)}
+                        onDeleteCategory={handleDeleteCategory}
+                    />
+                )}
+            </Animated.ScrollView>
 
             {/* Create Category Modal */}
             <CreateCategoryModal
@@ -715,6 +667,7 @@ const styles = StyleSheet.create({
         borderRadius: horizontalScale(3),
         overflow: 'hidden',
         marginBottom: verticalScale(4),
+        transform: [{ scaleX: -1 }]
     },
     progressFill: {
         height: '100%',
@@ -795,6 +748,15 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: verticalScale(20),
     },
+    fullScreenOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: colors.bgSecondary,
+        zIndex: 100,
+    },
     browseButton: {
         backgroundColor: colors.success,
         paddingHorizontal: horizontalScale(24),
@@ -805,15 +767,6 @@ const styles = StyleSheet.create({
         fontSize: ScaleFontSize(14),
         color: '#FFFFFF',
         fontWeight: '500',
-    },
-    fullScreenOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: colors.bgSecondary,
-        zIndex: 100,
     },
     // Draft Card Styles
     draftSectionHeader: {
@@ -873,6 +826,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#E1E6EF',
         borderRadius: horizontalScale(4),
         overflow: 'hidden',
+        transform: [{ scaleX: -1 }]
     },
     draftProgressFill: {
         height: '100%',

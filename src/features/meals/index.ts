@@ -5,6 +5,7 @@ export { default as ActivePlansList } from './components/ActivePlansList';
 export { default as DietDetailsView } from './components/DietDetailsView';
 export { default as AssignClientModal } from './components/AssignClientModal';
 export { default as EditDietScreen } from './components/EditDietScreen';
+export { default as CreateDietScreen } from './components/CreateDietScreen';
 export { default as CreateCategoryModal } from './components/CreateCategoryModal';
 
 // Hooks
