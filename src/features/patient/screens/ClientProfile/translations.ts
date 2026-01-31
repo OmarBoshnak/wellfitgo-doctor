@@ -65,7 +65,7 @@ export const t = {
     notifications: isRTL ? 'الإشعارات' : 'Notifications',
     mealReminders: isRTL ? 'تذكير الوجبات' : 'Meal Reminders',
     weeklyCheckin: isRTL ? 'تذكير الوزن الأسبوعي' : 'Weekly Check-in',
-    coachMessages: isRTL ? 'رسائل المدرب' : 'Coach Messages',
+    coachMessages: isRTL ? 'رسائل الدكتور' : 'Coach Messages',
     dangerZone: isRTL ? 'منطقة الخطر' : 'Danger Zone',
     archiveClient: isRTL ? 'أرشفة العميل' : 'Archive Client',
     archiveClientDesc: isRTL ? 'سيتم إلغاء اشتراك العميل وإخفاؤه' : 'Client will be deactivated and hidden',

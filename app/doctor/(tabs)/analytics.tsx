@@ -209,10 +209,10 @@ export default function AnalyticsScreen() {
         return (
             <SafeAreaView edges={['left', 'right']} style={styles.container}>
                 <View style={[styles.header, { paddingTop: insets.top }]}>
-                    <Text style={[styles.title, { textAlign: isRTL ? 'left' : 'right' }]}>{t.title}</Text>
+                    <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t.title}</Text>
                 </View>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={colors.success} />
+                    <ActivityIndicator size="large" color={colors.primaryDark} />
                     <Text style={styles.loadingText}>{t.loading}</Text>
                 </View>
             </SafeAreaView>
@@ -224,7 +224,7 @@ export default function AnalyticsScreen() {
         return (
             <SafeAreaView edges={['left', 'right']} style={styles.container}>
                 <View style={[styles.header, { paddingTop: insets.top }]}>
-                    <Text style={[styles.title, { textAlign: isRTL ? 'left' : 'right' }]}>{t.title}</Text>
+                    <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t.title}</Text>
                 </View>
                 <View style={styles.emptyContainer}>
                     <BarChart3 size={horizontalScale(64)} color={colors.textSecondary} />
@@ -242,7 +242,7 @@ export default function AnalyticsScreen() {
             <View style={[styles.header, { paddingTop: insets.top }]}>
                 <View style={[styles.headerTop, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                     <View style={styles.headerTitleContainer}>
-                        <Text style={[styles.title, { textAlign: isRTL ? 'left' : 'left' }]}>{t.title}</Text>
+                        <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t.title}</Text>
                     </View>
                     <View style={[styles.headerActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                         {/* Time Filter Dropdown */}
@@ -305,27 +305,24 @@ export default function AnalyticsScreen() {
                         icon={<TrendingDown size={horizontalScale(22)} color="#3B82F6" />}
                         iconBg="#3B82F620"
                         label={t.avgProgress}
-                    // value={data.overview.avgProgress !== null
-                    //     ? `${Math.abs(data.overview.avgProgress).toFixed(1)} ${t.kgWeek}`
-                    //     : t.noData
-                    // }
-                    // trend={null}
-                    // trendUp={data.overview.avgProgress !== null && data.overview.avgProgress < 0}
+                        value={t.noData}
+                        trend={null}
+                        trendUp={false}
                     />
                     <StatCard
                         icon={<MessageSquare size={horizontalScale(22)} color="#8B5CF6" />}
                         iconBg="#8B5CF620"
                         label={t.checkInRate}
-                        value={`${(data.overview as any).checkInRate ?? 0}%`}
+                        value={`${data.overview.checkInRate ?? 0}%`}
                         trend={null}
-                        trendUp={((data.overview as any).checkInRate ?? 0) >= 80}
+                        trendUp={(data.overview.checkInRate ?? 0) >= 80}
                     />
                     <StatCard
                         icon={<Clock size={horizontalScale(22)} color="#F59E0B" />}
                         iconBg="#F59E0B20"
                         label={t.responseTime}
-                        value={(data.overview as any).responseTime != null
-                            ? `${((data.overview as any).responseTime).toFixed(1)} ${t.hours}`
+                        value={data.overview.responseTime != null
+                            ? `${data.overview.responseTime.toFixed(1)} ${t.hours}`
                             : t.noData
                         }
                         trend={null}

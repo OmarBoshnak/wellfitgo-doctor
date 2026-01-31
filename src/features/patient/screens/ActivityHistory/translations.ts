@@ -6,7 +6,7 @@ export const t = {
     back: isRTL ? 'رجوع' : 'Back',
 
     // Actors
-    byCoach: isRTL ? 'بواسطة المدرب' : 'By Coach',
+    byCoach: isRTL ? 'بواسطة الدكتور' : 'By Coach',
     byClient: isRTL ? 'بواسطة العميل' : 'By Client',
     bySystem: isRTL ? 'النظام' : 'System',
 

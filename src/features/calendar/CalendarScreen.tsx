@@ -12,6 +12,8 @@ import WeekGrid from './components/WeekGrid';
 import AddCallModal from './day/components/AddCallModal';
 import EditEventModal from './day/components/EditEventModal';
 import { colors } from '@/src/core/constants/Theme';
+import { SocketService } from '@/src/shared/services/socket/socket.service';
+import { useAppSelector } from '@/src/shared/store';
 
 // ============================================================
 // HELPER: Convert event to CalendarEvent for rendering
@@ -92,6 +94,8 @@ export const CalendarScreen: React.FC = () => {
         goToToday,
     } = useCalendar();
 
+    const { user } = useAppSelector((state) => state.auth);
+
     // Get date range for the current week
     // Note: Using local date formatting instead of toISOString() to avoid UTC timezone shifts
     const weekDates = useMemo(() => {
@@ -107,20 +111,52 @@ export const CalendarScreen: React.FC = () => {
     const startDate = weekDates[0];
     const endDate = weekDates[weekDates.length - 1];
 
-    useEffect(() => {
-        const fetchEvents = async () => {
-            if (!startDate || !endDate) return;
-            try {
-                const { appointmentService } = await import('@/src/shared/services/appointment.service');
-                const data = await appointmentService.getAppointments(startDate, endDate);
-                setCalendarEvents(data);
-            } catch (error) {
-                console.error('[CalendarScreen] Error fetching events:', error);
-                setCalendarEvents([]);
-            }
-        };
-        fetchEvents();
+    const fetchEvents = useCallback(async () => {
+        if (!startDate || !endDate) return;
+        try {
+            const { appointmentService } = await import('@/src/shared/services/appointment.service');
+            const data = await appointmentService.getAppointments(startDate, endDate);
+            setCalendarEvents(data);
+        } catch (error) {
+            console.error('[CalendarScreen] Error fetching events:', error);
+            setCalendarEvents([]);
+        }
     }, [startDate, endDate]);
+
+    // Initial fetch
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
+
+    // Socket Listener
+    useEffect(() => {
+        let mounted = true;
+
+        const connectAndListen = async () => {
+            if (!user?._id) return;
+
+            // Ensure connected and authenticated
+            await SocketService.connect();
+            if (!mounted) return;
+
+            // Join doctor room
+            SocketService.joinDoctorRoom(user._id);
+
+            // Listen for new appointments
+            SocketService.on('appointment_scheduled', (data) => {
+                console.log('[CalendarScreen] New appointment scheduled:', data);
+                // Refresh calendar events
+                fetchEvents();
+            });
+        };
+
+        connectAndListen();
+
+        return () => {
+            mounted = false;
+            SocketService.off('appointment_scheduled');
+        };
+    }, [user?._id, fetchEvents]);
 
     // Combine events with optimistic updates
     const allEvents = [...calendarEvents, ...optimisticEvents];

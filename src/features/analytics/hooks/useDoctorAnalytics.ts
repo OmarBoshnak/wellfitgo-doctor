@@ -5,18 +5,19 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { dashboardService, AnalyticsData } from '@/src/shared/services/dashboard.service';
 
 // ============ TYPES ============
 
-export type TimeRange = '7d' | '30d' | '90d' | 'all';
+export type TimeRange = '7days' | '30days' | '3months';
 
-export type ClientStatus = 'on_track' | 'needs_attention' | 'at_risk';
+export type ClientStatus = 'on_track' | 'needs_support' | 'at_risk';
 
 export interface OverviewStats {
-    totalClients: number;
     activeClients: number;
-    checkInsThisWeek: number;
-    averageProgress: number;
+    checkInRate?: number;
+    responseTime?: number | null;
+    avgProgress?: number | null;
 }
 
 export interface ProgressBuckets {
@@ -29,44 +30,52 @@ export interface DailyActivity {
     date: string;
     checkIns: number;
     messages: number;
+    plans: number;
 }
 
 export interface ClientCheckIn {
-    clientId: string;
-    clientName: string;
-    clientAvatar: string | null;
-    lastCheckIn: number;
+    id: string;
+    name: string;
+    lastCheckIn: string | null;
     status: ClientStatus;
-    progressPercent: number;
-    weightChange: number;
 }
 
 export interface DoctorAnalyticsData {
     overview: OverviewStats;
     progressBuckets: ProgressBuckets;
     dailyActivity: DailyActivity[];
-    recentCheckIns: ClientCheckIn[];
+    clients: ClientCheckIn[];
 }
 
 export interface UseDoctorAnalyticsResult {
     data: DoctorAnalyticsData | null;
     isLoading: boolean;
+    isEmpty: boolean;
     error: string | null;
     refetch: () => void;
 }
 
 // ============ HELPER FUNCTIONS ============
 
-export function formatLastCheckIn(timestamp: number): string {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+export function formatLastCheckIn(
+    lastCheckIn: string | null,
+    translations: {
+        today: string;
+        dayAgo: string;
+        daysAgo: string;
+        never: string;
+    }
+): string {
+    if (!lastCheckIn) return translations.never;
 
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    return `${Math.floor(days / 30)} months ago`;
+    const now = new Date();
+    const checkInDate = new Date(lastCheckIn);
+    const diffMs = now.getTime() - checkInDate.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return translations.today;
+    if (diffDays === 1) return translations.dayAgo;
+    return `${diffDays} ${translations.daysAgo}`;
 }
 
 export function calculateProgressPercentages(buckets: ProgressBuckets): {
@@ -103,15 +112,49 @@ export function calculateProgressPercentages(buckets: ProgressBuckets): {
 
 // ============ MAIN HOOK ============
 
-export function useDoctorAnalytics(timeRange: TimeRange = '30d'): UseDoctorAnalyticsResult {
+export function useDoctorAnalytics(timeRange: TimeRange = '7days'): UseDoctorAnalyticsResult {
     const [data, setData] = useState<DoctorAnalyticsData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const fetchAnalytics = async () => {
+        setIsLoading(true);
+        setError(null);
         try {
+            const result = await dashboardService.getAnalytics(timeRange);
+            if (result) {
+                // Transform backend response to match expected types
+                const transformedData: DoctorAnalyticsData = {
+                    overview: {
+                        activeClients: result.overview.activeClients,
+                        checkInRate: result.overview.checkInRate,
+                        responseTime: result.overview.responseTime,
+                    },
+                    progressBuckets: {
+                        onTrack: result.progressBuckets.onTrack,
+                        needsAttention: result.progressBuckets.needsAttention,
+                        atRisk: result.progressBuckets.atRisk,
+                    },
+                    dailyActivity: result.dailyActivity.map(day => ({
+                        date: day.date,
+                        checkIns: day.checkIns,
+                        messages: day.messages,
+                        plans: day.plans,
+                    })),
+                    clients: result.clients.map(client => ({
+                        id: client.id,
+                        name: client.name,
+                        lastCheckIn: client.lastCheckIn,
+                        status: client.status,
+                    })),
+                };
+                setData(transformedData);
+            } else {
+                setData(null);
+            }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+            setData(null);
         } finally {
             setIsLoading(false);
         }
@@ -121,9 +164,15 @@ export function useDoctorAnalytics(timeRange: TimeRange = '30d'): UseDoctorAnaly
         fetchAnalytics();
     }, [timeRange]);
 
+    const isEmpty = useMemo(() => {
+        if (!data) return true;
+        return data.overview.activeClients === 0;
+    }, [data]);
+
     return {
         data,
         isLoading,
+        isEmpty,
         error,
         refetch: fetchAnalytics,
     };

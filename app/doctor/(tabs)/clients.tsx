@@ -119,6 +119,7 @@ export default function ClientsScreen() {
         isEmpty,
         sendReminder,
         isSendingReminder,
+        refetch,
     } = useClients(activeFilter, searchQuery);
 
     // ============ HANDLERS ============
@@ -145,11 +146,11 @@ export default function ClientsScreen() {
         await sendReminder(client.id, reminderType);
     }, [sendReminder]);
 
-    const handleRefresh = useCallback(() => {
+    const handleRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Convex auto-refreshes, wait briefly for UX
-        setTimeout(() => setRefreshing(false), 1000);
-    }, []);
+        await refetch();
+        setRefreshing(false);
+    }, [refetch]);
 
     // ============ FILTER CHIPS (Day-based) ============
 
@@ -219,6 +220,18 @@ export default function ClientsScreen() {
                     activeOpacity={0.7}
                 >
                     <View style={[styles.cardHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <View style={[styles.clientInfo, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                            <View style={[styles.nameRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                {/* Check-in Day Badge */}
+                                <View style={styles.dayBadge}>
+                                    <Text style={styles.dayBadgeText}>
+                                        {client.weeklyCheckinDay?.toUpperCase() || 'THU'}
+                                    </Text>
+                                </View>
+                                <Text style={styles.clientName}>{client.name}</Text>
+                            </View>
+                            <Text style={styles.clientEmail}>{client.email}</Text>
+                        </View>
                         <View style={styles.avatarContainer}>
                             {client.avatar ? (
                                 <Image source={{ uri: client.avatar }} style={styles.avatar} />
@@ -230,34 +243,21 @@ export default function ClientsScreen() {
                                 </View>
                             )}
                         </View>
-                        <View style={[styles.clientInfo, { alignItems: isRTL ? 'flex-start' : 'flex-end' }]}>
-                            <View style={[styles.nameRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                <Text style={styles.clientName}>{client.name}</Text>
-                                {/* Check-in Day Badge */}
-                                <View style={styles.dayBadge}>
-                                    <Text style={styles.dayBadgeText}>
-                                        {client.weeklyCheckinDay?.toUpperCase() || 'THU'}
-                                    </Text>
-                                </View>
-                            </View>
-                            <Text style={styles.clientEmail}>{client.email}</Text>
-                        </View>
+
                     </View>
                 </TouchableOpacity>
 
                 {/* Progress Section */}
                 <View style={styles.progressSection}>
                     <View style={[styles.progressHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.progressLabel}>{t.weightProgress}</Text>
                         <Text style={styles.progressPercentage}>{client.progress}%</Text>
+                        <Text style={styles.progressLabel}>{t.weightProgress}</Text>
                     </View>
-                    <View style={[styles.weightFlow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.weightFlow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <Text style={styles.weightText}>
-                            {client.startWeight} kg
+                            {client.targetWeight} kg
                             <Text style={styles.weightArrow}> {isRTL ? '←' : '→'} </Text>
                             {client.currentWeight} kg
-                            <Text style={styles.weightArrow}> {isRTL ? '←' : '→'} </Text>
-                            {client.targetWeight} kg
                         </Text>
                     </View>
                     <View style={styles.progressBarContainer}>
@@ -273,9 +273,8 @@ export default function ClientsScreen() {
                 {/* Footer */}
                 <View style={styles.cardFooter}>
                     {/* Info Badges */}
-                    <View style={[styles.infoBadges, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.infoBadges, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <View style={[styles.infoBadge, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <Clock size={horizontalScale(12)} color={colors.textSecondary} />
                             <Text
                                 style={[
                                     styles.infoBadgeText,
@@ -287,6 +286,7 @@ export default function ClientsScreen() {
                                     isNewClient ? client.daysSinceJoined : client.lastCheckInDays
                                 )}
                             </Text>
+                            <Clock size={horizontalScale(12)} color={colors.textSecondary} />
                         </View>
                     </View>
 

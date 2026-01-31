@@ -84,6 +84,40 @@ export interface WeeklyActivityBackend {
     };
 }
 
+// Types for analytics (matches backend response)
+export interface AnalyticsOverview {
+    activeClients: number;
+    checkInRate: number;
+    responseTime: number | null;
+}
+
+export interface AnalyticsProgressBuckets {
+    onTrack: number;
+    needsAttention: number;
+    atRisk: number;
+}
+
+export interface AnalyticsDailyActivity {
+    date: string;
+    messages: number;
+    plans: number;
+    checkIns: number;
+}
+
+export interface AnalyticsClientCheckIn {
+    id: string;
+    name: string;
+    lastCheckIn: string | null;
+    status: 'on_track' | 'needs_support' | 'at_risk';
+}
+
+export interface AnalyticsData {
+    overview: AnalyticsOverview;
+    progressBuckets: AnalyticsProgressBuckets;
+    dailyActivity: AnalyticsDailyActivity[];
+    clients: AnalyticsClientCheckIn[];
+}
+
 // API Functions
 export const dashboardService = {
     /**
@@ -203,6 +237,22 @@ export const dashboardService = {
         } catch (error) {
             console.error('[DashboardService] Error fetching recent activity:', error);
             return [];
+        }
+    },
+
+    /**
+     * Get analytics data for the analytics screen
+     */
+    async getAnalytics(timeRange: '7days' | '30days' | '3months'): Promise<AnalyticsData | null> {
+        try {
+            const response = await api.get(`/doctors/analytics?range=${timeRange}`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch analytics');
+        } catch (error) {
+            console.error('[DashboardService] Error fetching analytics:', error);
+            return null;
         }
     },
 };

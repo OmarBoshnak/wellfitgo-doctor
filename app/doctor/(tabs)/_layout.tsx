@@ -94,7 +94,7 @@ export default function TabsLayout() {
             />
 
             <Tabs.Screen
-                name="index"
+                name="home"
                 options={{
                     title: tabLabels.index,
                     tabBarIcon: ({ color, size }) => <Home size={horizontalScale(size)} color={color} />,

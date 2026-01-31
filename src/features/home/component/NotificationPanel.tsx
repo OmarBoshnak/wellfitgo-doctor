@@ -82,6 +82,31 @@ export function NotificationPanel({
             onPress={() => onNotificationPress?.(item)}
             activeOpacity={0.7}
         >
+            {/* Unread indicator */}
+            {!item.isRead && <View style={styles.unreadDot} />}
+
+
+            {/* Content */}
+            <View style={styles.contentContainer}>
+                <Text
+                    style={[styles.notificationTitle, { textAlign: isRTL ? 'right' : 'left' }]}
+                    numberOfLines={1}
+                >
+                    {item.title}
+                </Text>
+                <Text
+                    style={[styles.notificationSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}
+                    numberOfLines={2}
+                >
+                    {item.subtitle}
+                </Text>
+                <Text
+                    style={[styles.timestamp, { textAlign: isRTL ? 'right' : 'left' }]}
+                >
+                    {item.relativeTime}
+                </Text>
+            </View>
+
             {/* Avatar or Icon */}
             <View style={styles.avatarContainer}>
                 {item.avatar ? (
@@ -104,30 +129,6 @@ export function NotificationPanel({
                     />
                 </View>
             </View>
-
-            {/* Content */}
-            <View style={styles.contentContainer}>
-                <Text
-                    style={[styles.notificationTitle, { textAlign: isRTL ? 'left' : 'left' }]}
-                    numberOfLines={1}
-                >
-                    {item.title}
-                </Text>
-                <Text
-                    style={[styles.notificationSubtitle, { textAlign: isRTL ? 'left' : 'left' }]}
-                    numberOfLines={2}
-                >
-                    {item.subtitle}
-                </Text>
-                <Text
-                    style={[styles.timestamp, { textAlign: isRTL ? 'left' : 'left' }]}
-                >
-                    {item.relativeTime}
-                </Text>
-            </View>
-
-            {/* Unread indicator */}
-            {!item.isRead && <View style={styles.unreadDot} />}
         </TouchableOpacity>
     );
 

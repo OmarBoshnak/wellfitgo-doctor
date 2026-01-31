@@ -11,6 +11,7 @@ export default function DoctorLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="settings" options={{ headerShown: false }} />
             <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="diet-plans" options={{ headerShown: false }} />
         </Stack>
     );

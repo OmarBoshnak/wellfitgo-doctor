@@ -84,7 +84,7 @@ export default function PhoneVerificationScreen() {
 
             // Navigate based on routing decision from backend
             if (user.status === 'pending' || !user.status) {
-                router.replace('/(auth)/ApprovalPendingScreen');
+                router.replace('/(auth)/approval-pending');
             } else if (user.status === 'rejected') {
                 Alert.alert('تنبيه', 'تم رفض طلب حسابك. يرجى الاتصال بالدعم.');
                 await AuthService.logout();

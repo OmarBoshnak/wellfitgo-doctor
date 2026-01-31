@@ -111,7 +111,7 @@ export const homeTranslations = {
     // Actions
     viewAll: isRTL ? 'عرض الكل' : 'View All',
     view: isRTL ? 'عرض' : 'View',
-    messageCoach: isRTL ? 'رسالة المدرب' : 'Message Coach',
+    messageCoach: isRTL ? 'رسالة الدكتور' : 'Message Coach',
     waterTracker: isRTL ? 'متتبع المياه' : 'Water Tracker',
 
     // Banner
@@ -290,10 +290,10 @@ export const profileTranslations = {
 
     // Plan Summary
     yourPlan: isRTL ? 'خطتك' : 'Your Plan',
-    coach: isRTL ? 'المدرب' : 'Coach',
+    coach: isRTL ? 'الدكتور' : 'Coach',
     dayOf: isRTL ? 'يوم من' : 'Day of',
     daysRemaining: isRTL ? 'يوم متبقي' : 'days remaining',
-    messageCoach: isRTL ? 'راسل المدرب' : 'Message Coach',
+    messageCoach: isRTL ? 'راسل الدكتور' : 'Message Coach',
     viewPlan: isRTL ? 'عرض الخطة' : 'View Plan',
     noPlan: isRTL ? 'لا توجد خطة حالية' : 'No active plan',
 
@@ -330,7 +330,7 @@ export const profileTranslations = {
     mealReminders: isRTL ? 'تذكير الوجبات' : 'Meal Reminders',
     dailySummary: isRTL ? 'الملخص اليومي' : 'Daily Summary',
     weeklyReport: isRTL ? 'التقرير الأسبوعي' : 'Weekly Report',
-    coachMessages: isRTL ? 'رسائل المدرب' : 'Coach Messages',
+    coachMessages: isRTL ? 'رسائل الدكتور' : 'Coach Messages',
 
     // Preferences
     preferences: isRTL ? 'التفضيلات' : 'Preferences',

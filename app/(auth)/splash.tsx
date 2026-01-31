@@ -78,11 +78,11 @@ export default function SplashScreenComponent() {
     const navigateToScreen = useCallback(() => {
         try {
             // Navigate to login screen
-            router.replace('/(auth)/LoginScreen');
+            router.replace('/(auth)/login');
         } catch (error) {
             console.error('Navigation error:', error);
             // Fallback
-            router.replace('/(auth)/LoginScreen');
+            router.replace('/(auth)/login');
         }
     }, [router]);
 

@@ -102,7 +102,7 @@ export const homeTranslations = {
     // Actions
     viewAll: isRTL ? 'عرض الكل' : 'View All',
     view: isRTL ? 'عرض' : 'View',
-    messageCoach: isRTL ? 'رسالة المدرب' : 'Message Coach',
+    messageCoach: isRTL ? 'رسالة الدكتور' : 'Message Coach',
     waterTracker: isRTL ? 'متتبع المياه' : 'Water Tracker',
 
     // Banner
