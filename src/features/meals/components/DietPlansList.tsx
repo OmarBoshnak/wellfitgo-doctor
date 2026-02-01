@@ -154,6 +154,7 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
     );
 
     const renderDietCard = (diet: DietPlan) => (
+        
         <View key={diet.id} style={styles.dietCard}>
             {/* Header with Emoji and Name */}
             <View style={[styles.dietHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
@@ -237,7 +238,7 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
     );
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView edges={['right','left']} style={styles.container}>
             {renderHeader()}
             {renderBanner()}
 
@@ -255,7 +256,7 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
             ) : (
                 renderEmptyState()
             )}
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -263,6 +264,7 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        paddingHorizontal:horizontalScale(10)
     },
     // Header
     header: {

@@ -1,11 +1,12 @@
 import api from './api/client';
+import { Config } from '@/src/core/constants/Config';
 import {
     MOCK_ACTIVE_PLANS,
-    MOCK_DRAFT_PLANS,
     MOCK_ASSIGNMENT_CLIENTS,
-    MOCK_DIET_PROGRAMS,
     MOCK_DIET_CATEGORIES,
-    MOCK_DIET_PLANS
+    MOCK_DIET_PLANS,
+    MOCK_DIET_PROGRAMS,
+    MOCK_DRAFT_PLANS
 } from '../../features/meals/data/mockData';
 
 // Types
@@ -124,6 +125,19 @@ export interface CreateDietCategoryArgs {
     emoji: string;
     description?: string;
     autoGenerateRanges?: boolean;
+    type?: 'system' | 'custom'; // Add type field
+}
+
+export interface ClientMealPlan {
+    id: string;
+    dietPlanId?: string;
+    weekStartDate: string;
+    weekEndDate: string;
+    status: "draft" | "published" | "active" | "completed" | "archived";
+    notes?: string;
+    mealsCompleted: number;
+    mealsTotal: number;
+    createdAt: number;
 }
 
 // Temporary flag to force mock usage until backend is ready
@@ -271,7 +285,7 @@ export const plansService = {
 
     // Mutations
     async createDietPlan(args: CreateDietPlanArgs): Promise<{ id: string }> {
-        if (USE_MOCK_DATA) return { id: 'mock_plan_' + Date.now() };
+        if (USE_MOCK_DATA) return {id: 'mock_plan_' + Date.now()};
 
         try {
             const response = await api.post('/doctors/plans', args);
@@ -280,7 +294,7 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to create diet plan');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return { id: 'mock_plan_' + Date.now() };
+            if (error.response && error.response.status === 404) return {id: 'mock_plan_' + Date.now()};
             throw error;
         }
     },
@@ -311,7 +325,7 @@ export const plansService = {
     },
 
     async createWeeklyPlan(args: CreateWeeklyPlanArgs): Promise<{ id: string }> {
-        if (USE_MOCK_DATA) return { id: 'mock_weekly_' + Date.now() };
+        if (USE_MOCK_DATA) return {id: 'mock_weekly_' + Date.now()};
 
         const response = await api.post('/doctors/plans/weekly', args);
         if (response.data.success) {
@@ -331,7 +345,7 @@ export const plansService = {
     },
 
     async createDietCategory(args: CreateDietCategoryArgs): Promise<{ id: string }> {
-        if (USE_MOCK_DATA) return { id: 'mock_cat_' + Date.now() };
+        if (USE_MOCK_DATA) return {id: 'mock_cat_' + Date.now()};
 
         const response = await api.post('/doctors/plans/categories', args);
         if (response.data.success) {
@@ -358,6 +372,39 @@ export const plansService = {
             return true;
         }
         throw new Error(response.data.message || 'Failed to update category');
+    },
+
+    // Client Meal Plans
+    async getClientMealPlans(clientId: string): Promise<ClientMealPlan[]> {
+        try {
+            console.log(`[PlansService] Fetching meal plans for client: ${clientId}`);
+            console.log(`[PlansService] Full URL: ${Config.API_URL}/doctors/clients/${clientId}/meal-plans`);
+            
+            const response = await api.get(`/doctors/clients/${clientId}/meal-plans`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch client meal plans');
+        } catch (error: any) {
+            console.error('[PlansService] Error fetching client meal plans:', error);
+            console.error('[PlansService] Response status:', error.response?.status);
+            console.error('[PlansService] Response data:', error.response?.data);
+            console.error('[PlansService] Request URL:', error.config?.baseURL + error.config?.url);
+            throw error;
+        }
+    },
+
+    async deleteClientMealPlan(clientId: string, planId: string): Promise<boolean> {
+        try {
+            const response = await api.delete(`/doctors/clients/${clientId}/meal-plans/${planId}`);
+            if (response.data.success) {
+                return true;
+            }
+            throw new Error(response.data.message || 'Failed to delete meal plan');
+        } catch (error: any) {
+            console.error('[PlansService] Error deleting meal plan:', error);
+            throw error;
+        }
     }
 };
 

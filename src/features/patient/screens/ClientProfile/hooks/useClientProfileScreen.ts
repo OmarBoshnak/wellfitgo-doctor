@@ -1,6 +1,6 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Linking, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Linking } from 'react-native';
 // Removing backend hooks imports
 // import {
 //     useClientProfile,
@@ -8,9 +8,10 @@ import { useRouter } from 'expo-router';
 //     useWeightChart,
 //     useClientWeightHistory,
 // } from '@/src/lib';
-import { TabType, SectionItem, TABS, ChartPeriod } from '../types';
 import { isRTL } from '@/src/core/constants/translation';
 import { usePhoneCall } from '@/src/hooks/usePhoneCall';
+import clientsService from '@/src/shared/services/clients.service';
+import { ChartPeriod, SectionItem, TABS, TabType } from '../types';
 
 // ============ TYPES ============
 
@@ -19,17 +20,18 @@ export interface ClientProfile {
     name: string;
     firstName: string;
     lastName?: string;
-    email: string;
-    phone: string;
-    avatar: string | null;
-    location: string;
+    email?: string | null;
+    phone?: string | null;
+    avatar?: string | null;
+    location?: string;
+    height?: number;
     startWeight: number;
     currentWeight: number;
     targetWeight: number;
     weeklyChange: number;
     startDate: string;
     joinedAt: number;
-    lastActiveAt?: number;
+    lastActiveAt?: string | number;
     subscriptionStatus: string;
     conversationId: string | null;
     unreadMessages: number;
@@ -49,12 +51,33 @@ export interface ClientProfile {
 
 export interface Activity {
     id: string;
-    type: "weight" | "meals" | "message" | "missed" | "plan";
+    type: "weight" | "meals" | "message" | "missed" | "plan" | "water";
     color: string;
     date: string;
     text: string;
     subtext: string;
     timestamp: number;
+}
+
+interface RawWeightEntry {
+    id?: string;
+    weight: number;
+    unit?: string;
+    date: string;
+    feeling?: string;
+    createdAt?: number;
+}
+
+interface ClientProgressData {
+    startWeight?: number;
+    currentWeight?: number;
+    targetWeight?: number;
+    height?: number;
+    weightHistory?: RawWeightEntry[];
+    weeklyGoals?: Record<string, any>;
+    mealCompliance?: number;
+    waterIntake?: number;
+    exerciseMinutes?: number;
 }
 
 export interface UseClientProfileResult {
@@ -119,6 +142,93 @@ const alertMessages = {
     },
 };
 
+const DEFAULT_MEALS_TOTAL = 21;
+const IDEAL_BMI = 22;
+
+const activityColors: Record<string, string> = {
+    weight: '#60A5FA',
+    meals: '#27AE61',
+    message: '#5073FE',
+    missed: '#FBBF24',
+    plan: '#8B5CF6',
+    water: '#27AE61',
+};
+
+const formatShortDate = (dateString?: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+        month: 'short',
+        day: 'numeric',
+    });
+};
+
+const formatActivityDate = (value?: string | number): string => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const dateLabel = date.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+        month: 'short',
+        day: 'numeric',
+    });
+    const timeLabel = date.toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+    return `${dateLabel} • ${timeLabel}`;
+};
+
+const parseTimestamp = (value?: string | number): number => {
+    if (!value) return Date.now();
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? Date.now() : date.getTime();
+};
+
+const normalizeWeightHistory = (entries: RawWeightEntry[] | undefined, clientId?: string) => {
+    if (!entries || entries.length === 0) return [];
+    return entries
+        .map((entry, index) => {
+            const createdAt = entry.createdAt
+                ? new Date(entry.createdAt).getTime()
+                : new Date(entry.date).getTime();
+            return {
+                id: entry.id ?? `${clientId || 'client'}-weight-${index}`,
+                weight: entry.weight,
+                unit: entry.unit ?? 'kg',
+                date: entry.date,
+                feeling: entry.feeling,
+                createdAt,
+            };
+        })
+        .sort((a, b) => b.createdAt - a.createdAt);
+};
+
+const filterHistoryByPeriod = (
+    entries: ReturnType<typeof normalizeWeightHistory>,
+    period: ChartPeriod
+) => {
+    const sortedAsc = [...entries].sort((a, b) => a.createdAt - b.createdAt);
+    if (period === 'All') return sortedAsc;
+    const daysMap: Record<Exclude<ChartPeriod, 'All'>, number> = {
+        '1M': 30,
+        '3M': 90,
+        '6M': 180,
+        '1Y': 365,
+    };
+    const days = daysMap[period as Exclude<ChartPeriod, 'All'>] ?? 90;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    return sortedAsc.filter(entry => new Date(entry.date) >= cutoff);
+};
+
+const calculateTargetWeight = (heightCm?: number): number | null => {
+    if (!heightCm || heightCm <= 0) return null;
+    const heightMeters = heightCm / 100;
+    const target = IDEAL_BMI * (heightMeters ** 2);
+    return Math.round(target * 10) / 10;
+};
+
 // ============ MAIN HOOK ============
 
 export function useClientProfileScreen(clientId?: string): UseClientProfileResult {
@@ -129,76 +239,204 @@ export function useClientProfileScreen(clientId?: string): UseClientProfileResul
     const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('3M');
     const [showCallModal, setShowCallModal] = useState(false);
 
+    const [profileData, setProfileData] = useState<Partial<ClientProfile> | null>(null);
+    const [progressData, setProgressData] = useState<ClientProgressData | null>(null);
+    const [activitiesData, setActivitiesData] = useState<Activity[]>([]);
+    const [profileLoading, setProfileLoading] = useState(true);
+    const [progressLoading, setProgressLoading] = useState(true);
+    const [activityLoading, setActivityLoading] = useState(true);
+
     // Phone call hook (same as DayEventCard)
     const { callClient } = usePhoneCall();
 
-    // ============ MOCK DATA ============
-    // In a real app, these would come from the backend hooks
-    // const { data: clientData, isLoading: clientLoading } = useClientProfile(clientId || '');
-    // const { data: activitiesData } = useClientActivity(clientId || '');
-    // const { data: chartData, isLoading: chartLoading } = useWeightChart(clientId || '', chartPeriod);
-    // const { records: weightHistory } = useClientWeightHistory(clientId || '');
+    useEffect(() => {
+        let isMounted = true;
 
-    // Use mock data directly
-    const [clientData] = useState<any>(require('../mock').mockClient);
-    const [activitiesData] = useState<any[]>(require('../mock').mockActivity);
-    const [clientLoading] = useState(false);
-    const [chartLoading] = useState(false);
+        const fetchProfileData = async () => {
+            if (!clientId) {
+                setProfileData(null);
+                setProgressData(null);
+                setActivitiesData([]);
+                setProfileLoading(false);
+                setProgressLoading(false);
+                setActivityLoading(false);
+                return;
+            }
 
-    // Mock chart data based on client weight
-    const chartData = useMemo(() => {
-        return {
-            points: [
-                { date: '2023-11-01', weight: 75, timestamp: 1698800000000 },
-                { date: '2023-12-01', weight: 72, timestamp: 1701390000000 },
-                { date: '2024-01-01', weight: 68, timestamp: 1704060000000 },
-            ],
-            targetWeight: 60,
-            minWeight: 60,
-            maxWeight: 80,
-            currentWeight: 68,
-            startWeight: 75,
+            setProfileLoading(true);
+            setProgressLoading(true);
+            setActivityLoading(true);
+
+            const [clientsResult, progressResult, activityResult] = await Promise.allSettled([
+                clientsService.getClients('all', '', 1, 200),
+                clientsService.getClientProgress(clientId),
+                clientsService.getClientActivity(clientId),
+            ]);
+
+            if (!isMounted) return;
+
+            if (clientsResult.status === 'fulfilled') {
+                const matchedClient = clientsResult.value.clients.find((client: { id: string }) => client.id === clientId) ?? null;
+                setProfileData(matchedClient ? { ...matchedClient } : null);
+            } else {
+                setProfileData(null);
+            }
+
+            if (progressResult.status === 'fulfilled') {
+                setProgressData(progressResult.value as ClientProgressData);
+            } else {
+                setProgressData(null);
+            }
+
+            if (activityResult.status === 'fulfilled') {
+                const mappedActivities: Activity[] = (activityResult.value || []).map((activity: any, index: number) => {
+                    const timestamp = parseTimestamp(activity.timestamp ?? activity.createdAt ?? activity.date);
+                    return {
+                        id: activity.id ?? activity._id ?? `${clientId}-activity-${index}`,
+                        type: (activity.type as Activity['type']) ?? 'message',
+                        color: activity.color ?? activityColors[activity.type] ?? activityColors.message,
+                        date: activity.date ?? formatActivityDate(timestamp),
+                        text: activity.text ?? activity.title ?? activity.description ?? '',
+                        subtext: activity.subtext ?? activity.details ?? '',
+                        timestamp,
+                    };
+                });
+                setActivitiesData(mappedActivities.sort((a, b) => b.timestamp - a.timestamp));
+            } else {
+                setActivitiesData([]);
+            }
+
+            setProfileLoading(false);
+            setProgressLoading(false);
+            setActivityLoading(false);
         };
-    }, []);
 
-    // Mock weight history
-    const weightHistory = useMemo(() => [
-        { id: '1', weight: 68, unit: 'kg', date: '2024-01-01', feeling: 'good', createdAt: 1704060000000 },
-        { id: '2', weight: 70, unit: 'kg', date: '2023-12-15', feeling: 'ok', createdAt: 1702600000000 },
-    ], []);
+        fetchProfileData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [clientId]);
 
     // ============ TRANSFORM DATA ============
 
+    const weightHistory = useMemo(
+        () => normalizeWeightHistory(progressData?.weightHistory, clientId),
+        [progressData?.weightHistory, clientId]
+    );
+
+    const heightCm = progressData?.height ?? profileData?.height;
+    const calculatedTargetWeight = calculateTargetWeight(heightCm);
+    const baseTargetWeight = progressData?.targetWeight ?? profileData?.targetWeight ?? 0;
+    const targetWeight = calculatedTargetWeight ?? baseTargetWeight;
+
+    const currentWeight =
+        progressData?.currentWeight ??
+        profileData?.currentWeight ??
+        weightHistory[0]?.weight ??
+        0;
+    const startWeight =
+        progressData?.startWeight ??
+        profileData?.startWeight ??
+        weightHistory[weightHistory.length - 1]?.weight ??
+        currentWeight;
+
+    const weeklyChange = weightHistory.length > 1
+        ? weightHistory[0].weight - weightHistory[1].weight
+        : 0;
+    const startDate = formatShortDate(weightHistory[weightHistory.length - 1]?.date);
+
     const client = useMemo((): ClientProfile | null => {
-        if (!clientData) return null;
-        return clientData as unknown as ClientProfile;
-    }, [clientData]);
+        if (!profileData && !progressData) return null;
 
-    const activities = useMemo((): Activity[] => {
-        if (!activitiesData) return [];
-        return activitiesData as Activity[];
-    }, [activitiesData]);
+        const resolvedName = profileData?.name
+            ?? `${profileData?.firstName || ''} ${profileData?.lastName || ''}`.trim();
+        const name = resolvedName || (isRTL ? 'عميل' : 'Client');
 
-    // Weekly stats derived from weight history
+        return {
+            id: profileData?.id ?? clientId ?? '',
+            name,
+            firstName: profileData?.firstName ?? name.split(' ')[0] ?? '',
+            lastName: profileData?.lastName,
+            email: profileData?.email ?? null,
+            phone: profileData?.phone ?? null,
+            avatar: profileData?.avatar ?? null,
+            location: profileData?.location,
+            height: heightCm,
+            startWeight,
+            currentWeight,
+            targetWeight,
+            weeklyChange,
+            startDate,
+            joinedAt: profileData?.joinedAt ?? 0,
+            lastActiveAt: profileData?.lastActiveAt,
+            subscriptionStatus: profileData?.subscriptionStatus ?? '',
+            conversationId: profileData?.conversationId ?? null,
+            unreadMessages: profileData?.unreadMessages ?? 0,
+            hasActivePlan: profileData?.hasActivePlan ?? false,
+            activePlanId: profileData?.activePlanId ?? null,
+            planWeekStart: profileData?.planWeekStart,
+            planWeekEnd: profileData?.planWeekEnd,
+            weightHistory,
+        };
+    }, [
+        profileData,
+        progressData,
+        clientId,
+        heightCm,
+        startWeight,
+        currentWeight,
+        targetWeight,
+        weeklyChange,
+        startDate,
+        weightHistory,
+    ]);
+
+    const activities = useMemo(() => activitiesData, [activitiesData]);
+
+    const mealsCompleted = progressData?.mealCompliance
+        ? Math.round((progressData.mealCompliance / 100) * DEFAULT_MEALS_TOTAL)
+        : 0;
+
     const weeklyStats = useMemo(() => {
-        if (!weightHistory || weightHistory.length === 0) return null;
+        if (!weightHistory.length && !progressData) return null;
         const lastLog = weightHistory[0];
         return {
-            mealsCompleted: 0, // TODO: Get from meal completions
-            mealsTotal: 21,
+            mealsCompleted,
+            mealsTotal: DEFAULT_MEALS_TOTAL,
             hasWeightLog: !!lastLog,
-            lastWeightLogDate: lastLog?.date,
-            lastWeightLogFeeling: lastLog?.feeling,
+            lastWeightLogDate: lastLog?.date ?? null,
+            lastWeightLogFeeling: lastLog?.feeling ?? null,
         };
-    }, [weightHistory]);
+    }, [weightHistory, mealsCompleted, progressData]);
+
+    const chartData = useMemo(() => {
+        const filteredHistory = filterHistoryByPeriod(weightHistory, chartPeriod);
+        if (!filteredHistory.length) return null;
+        const points = filteredHistory.map(entry => ({
+            date: entry.date,
+            weight: entry.weight,
+            timestamp: entry.createdAt,
+            feeling: entry.feeling,
+        }));
+        const weights = points.map(point => point.weight);
+        return {
+            points,
+            targetWeight,
+            minWeight: Math.min(...weights),
+            maxWeight: Math.max(...weights),
+            currentWeight,
+            startWeight,
+        };
+    }, [weightHistory, chartPeriod, targetWeight, currentWeight, startWeight]);
 
     // ============ COMPUTED VALUES ============
 
     const weightDiff = client ? client.startWeight - client.currentWeight : 0;
     const remainingWeight = client ? client.currentWeight - client.targetWeight : 0;
-    const isLoading = clientLoading;
-    const isChartLoading = chartLoading;
-    const statsLoading = !weeklyStats;
+    const isLoading = profileLoading || progressLoading || activityLoading;
+    const isChartLoading = progressLoading;
+    const statsLoading = progressLoading;
 
     // ============ HANDLERS ============
 

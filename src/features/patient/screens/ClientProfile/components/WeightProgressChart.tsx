@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { gradients, colors } from '@/src/core/constants/Theme';
-import { isRTL } from '@/src/core/constants/translation';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
-import { styles as profileStyles } from '../styles';
-import { t, chartPeriodLabels } from '../translations';
-import { ChartPeriod, CHART_PERIODS } from '../types';
+import {ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {LinearGradient} from 'expo-linear-gradient';
+import {colors, gradients} from '@/src/core/constants/Theme';
+import {isRTL} from '@/src/core/constants/translation';
+import {horizontalScale, ScaleFontSize, verticalScale} from '@/src/core/utils/scaling';
+import {styles as profileStyles} from '../styles';
+import {chartPeriodLabels, t} from '../translations';
+import {CHART_PERIODS, ChartPeriod} from '../types';
 
 // ============ TYPES ============
 
@@ -62,11 +62,11 @@ function formatDateLabel(dateString: string): { en: string; ar: string } {
 // ============ COMPONENT ============
 
 export function WeightProgressChart({
-    period,
-    onPeriodChange,
-    chartData,
-    isLoading = false,
-}: WeightProgressChartProps) {
+                                        period,
+                                        onPeriodChange,
+                                        chartData,
+                                        isLoading = false,
+                                    }: WeightProgressChartProps) {
     // Calculate chart dimensions
     const points = chartData?.points ?? [];
     const hasData = points.length > 0;
@@ -76,7 +76,7 @@ export function WeightProgressChart({
     const range = maxWeight - minWeight || 1;
     const chartHeight = verticalScale(180);
 
-    const renderBar = ({ item, index }: { item: ChartPoint; index: number }) => {
+    const renderBar = ({item, index}: { item: ChartPoint; index: number }) => {
         const heightPercent = ((item.weight - minWeight) / range) * 100;
         const barHeight = Math.max((heightPercent / 100) * chartHeight, verticalScale(20));
         const dateLabel = formatDateLabel(item.date);
@@ -88,9 +88,9 @@ export function WeightProgressChart({
                 <Text style={styles.weightLabel}>{item.weight}kg</Text>
                 <LinearGradient
                     colors={gradients.primary}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={[styles.bar, { height: barHeight }]}
+                    start={{x: 0, y: 0}}
+                    end={{x: 0, y: 1}}
+                    style={[styles.bar, {height: barHeight}]}
                 />
                 <Text style={styles.dateLabel}>
                     {isRTL ? dateLabel.ar : dateLabel.en}
@@ -113,22 +113,23 @@ export function WeightProgressChart({
     return (
         <View style={profileStyles.chartCard}>
             {/* Header */}
-            <View style={[profileStyles.chartHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[profileStyles.chartHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
                 <Text style={profileStyles.chartTitle}>{t.weightProgress}</Text>
             </View>
 
             {/* Period Chips */}
             <FlatList
                 horizontal
+
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={[
                     profileStyles.periodChipsContainer,
-                    isRTL && { flexGrow: 1, justifyContent: 'flex-end' }
+                    isRTL && {flexGrow: 1, justifyContent: 'flex-start'}
                 ]}
                 data={CHART_PERIODS}
+                inverted
                 keyExtractor={(item) => item}
-                inverted={isRTL}
-                renderItem={({ item: chipPeriod }) => (
+                renderItem={({item: chipPeriod}) => (
                     <TouchableOpacity
                         onPress={() => onPeriodChange(chipPeriod)}
                         activeOpacity={0.8}
@@ -136,8 +137,8 @@ export function WeightProgressChart({
                         {period === chipPeriod ? (
                             <LinearGradient
                                 colors={gradients.primary}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
+                                start={{x: 0, y: 0}}
+                                end={{x: 1, y: 0}}
                                 style={profileStyles.periodChipActive}
                             >
                                 <Text style={profileStyles.periodChipTextActive}>{chartPeriodLabels[chipPeriod]}</Text>
@@ -155,7 +156,7 @@ export function WeightProgressChart({
             <View style={styles.chartContainer}>
                 {isLoading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color={colors.primaryDark} />
+                        <ActivityIndicator size="large" color={colors.primaryDark}/>
                     </View>
                 ) : hasData ? (
                     <FlatList
@@ -163,9 +164,10 @@ export function WeightProgressChart({
                         data={points}
                         keyExtractor={(item, index) => `${item.date}-${index}`}
                         renderItem={renderBar}
+
                         contentContainerStyle={[
                             styles.barsContainer,
-                            isRTL && { flexGrow: 1, justifyContent: 'flex-end' }
+                            isRTL && {flexGrow: 1, justifyContent: 'flex-start'}
                         ]}
                         showsHorizontalScrollIndicator={false}
                         inverted={isRTL}
@@ -179,14 +181,14 @@ export function WeightProgressChart({
             {hasData && chartData && (
                 <View style={styles.footer}>
                     <View style={[styles.footerRow, isRTL && styles.footerRowRTL]}>
-                        <View style={[styles.footerItem, isRTL && styles.footerItemRTL]}>
+                        <View style={[styles.footerItem]}>
                             <Text style={styles.footerValue}>{chartData.targetWeight} kg </Text>
                             <Text style={styles.footerLabel}>
                                 {t.goal}:
                             </Text>
                         </View>
-                        <View style={[styles.footerItem, isRTL && styles.footerItemRTL]}>
-                            <Text style={[styles.footerValue, { color: colors.success }]}>
+                        <View style={[styles.footerItem]}>
+                            <Text style={[styles.footerValue, {color: colors.success}]}>
                                 -{(chartData.startWeight - chartData.currentWeight).toFixed(1)} kg
                             </Text>
                             <Text style={styles.footerLabel}>
@@ -283,10 +285,12 @@ const styles = StyleSheet.create({
         fontSize: ScaleFontSize(16),
         fontWeight: '600',
         color: colors.textSecondary,
+        textAlign: 'right'
     },
     emptySubtext: {
         fontSize: ScaleFontSize(14),
         color: colors.textSecondary,
         marginTop: verticalScale(4),
+        textAlign: 'right'
     },
 });

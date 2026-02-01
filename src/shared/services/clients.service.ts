@@ -3,8 +3,8 @@
  * @description Service for fetching and managing doctor's clients from the backend
  */
 
+import {Client, DayCounts, DayFilter} from '@/src/hooks/useClients';
 import api from './api/client';
-import { DayFilter, Client, DayCounts } from '@/src/hooks/useClients';
 
 // Backend response types
 interface ClientsResponse {
@@ -24,6 +24,7 @@ interface BackendClient {
     email: string;
     avatarUrl?: string;
     phone?: string;
+    height?: number;
     status: string;
     weeklyCheckinDay: string;
     progress: number;
@@ -42,7 +43,15 @@ interface ClientProgressResponse {
     startWeight: number;
     currentWeight: number;
     targetWeight: number;
-    weightHistory: Array<{ date: string; weight: number }>;
+    height?: number;
+    weightHistory: Array<{
+        id: string;
+        date: string;
+        weight: number;
+        unit: string;
+        feeling?: string;
+        createdAt: number;
+    }>;
     weeklyGoals: Record<string, any>;
     mealCompliance: number;
     waterIntake: number;
@@ -58,6 +67,7 @@ const transformClient = (backendClient: BackendClient): Client => ({
     email: backendClient.email,
     phone: backendClient.phone,
     avatar: backendClient.avatarUrl || null,
+    height: backendClient.height,
     startWeight: backendClient.startWeight,
     currentWeight: backendClient.currentWeight,
     targetWeight: backendClient.targetWeight,
@@ -168,13 +178,65 @@ export const clientsService = {
      */
     async updateClientNotes(clientId: string, notes: string): Promise<void> {
         try {
-            const response = await api.put(`/doctors/clients/${clientId}/notes`, { notes });
+            const response = await api.put(`/doctors/clients/${clientId}/notes`, {notes});
 
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Failed to update notes');
             }
         } catch (error) {
             console.error('[ClientsService] Error updating client notes:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get all notes for a client
+     */
+    async getClientNotes(clientId: string): Promise<any[]> {
+        try {
+            const response = await api.get(`/doctors/clients/${clientId}/notes`);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Failed to fetch client notes');
+            }
+
+            return response.data.data;
+        } catch (error) {
+            console.error('[ClientsService] Error fetching client notes:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Create a new note for a client
+     */
+    async createClientNote(clientId: string, content: string): Promise<any> {
+        try {
+            const response = await api.post(`/doctors/clients/${clientId}/notes`, {content});
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Failed to create note');
+            }
+
+            return response.data.data;
+        } catch (error) {
+            console.error('[ClientsService] Error creating client note:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Delete a note
+     */
+    async deleteClientNote(clientId: string, noteId: string): Promise<void> {
+        try {
+            const response = await api.delete(`/doctors/clients/${clientId}/notes/${noteId}`);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Failed to delete note');
+            }
+        } catch (error) {
+            console.error('[ClientsService] Error deleting client note:', error);
             throw error;
         }
     },

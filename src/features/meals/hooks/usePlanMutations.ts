@@ -105,6 +105,7 @@ export interface CreateDietCategoryArgs {
     emoji: string;
     description?: string;
     autoGenerateRanges?: boolean;
+    type?: 'system' | 'custom'; // Add type field
 }
 
 // ============ HOOK ============

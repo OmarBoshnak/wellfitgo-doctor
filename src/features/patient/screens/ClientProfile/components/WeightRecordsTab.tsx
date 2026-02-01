@@ -10,14 +10,14 @@
 import { colors } from '@/src/core/constants/Theme';
 import { isRTL } from '@/src/core/constants/translation';
 import { horizontalScale, ScaleFontSize, verticalScale } from '@/src/core/utils/scaling';
-import { useWeightLogs } from '@/src/lib/hooks';
+import clientsService from '@/src/shared/services/clients.service';
 import {
     Calendar,
     Minus,
     TrendingDown,
     TrendingUp,
 } from 'lucide-react-native';
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -187,8 +187,63 @@ function LoadMoreButton({ onPress, loading }: { onPress: () => void; loading: bo
 
 // ============ MAIN COMPONENT ============
 export function WeightRecordsTab({ clientId }: WeightRecordsTabProps) {
-    // Use Supabase hook with pagination
-    const { logs, isLoading, hasMore, loadMore, totalCount } = useWeightLogs(clientId);
+    const [allLogs, setAllLogs] = useState<WeightLogEntry[]>([]);
+    const [visibleCount, setVisibleCount] = useState(20);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchWeightRecords = async () => {
+            try {
+                setIsLoading(true);
+                setAllLogs([]);
+                setVisibleCount(20);
+
+                const progress = await clientsService.getClientProgress(clientId);
+                const weightHistory = Array.isArray(progress?.weightHistory) ? progress.weightHistory : [];
+
+                const nextLogs: WeightLogEntry[] = weightHistory
+                    .slice()
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((entry, index) => ({
+                        id: `${clientId}-${entry.date}-${index}`,
+                        weight: entry.weight,
+                        unit: 'kg',
+                        date: entry.date,
+                        created_at: entry.date,
+                    }));
+
+                if (!isMounted) return;
+                setAllLogs(nextLogs);
+            } catch (error) {
+                console.error('[WeightRecordsTab] Error fetching weight records:', error);
+                if (!isMounted) return;
+                setAllLogs([]);
+            } finally {
+                if (!isMounted) return;
+                setIsLoading(false);
+            }
+        };
+
+        fetchWeightRecords();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [clientId]);
+
+    const logs = useMemo(() => allLogs.slice(0, visibleCount), [allLogs, visibleCount]);
+
+    const hasMore = logs.length < allLogs.length;
+
+    const loadMore = useCallback(() => {
+        if (!hasMore) return;
+        setIsLoadingMore(true);
+        setVisibleCount((prev) => Math.min(prev + 20, allLogs.length));
+        setIsLoadingMore(false);
+    }, [allLogs.length, hasMore]);
 
     // Loading state (initial)
     if (isLoading && logs.length === 0) {
@@ -217,7 +272,7 @@ export function WeightRecordsTab({ clientId }: WeightRecordsTabProps) {
 
     const renderFooter = () => {
         if (!hasMore) return null;
-        return <LoadMoreButton onPress={loadMore} loading={isLoading} />;
+        return <LoadMoreButton onPress={loadMore} loading={isLoadingMore} />;
     };
 
     return (
@@ -272,7 +327,7 @@ export function WeightRecordsTab({ clientId }: WeightRecordsTabProps) {
             }
             ListFooterComponent={renderFooter}
             onEndReached={() => {
-                if (hasMore && !isLoading) {
+                if (hasMore && !isLoading && !isLoadingMore) {
                     loadMore();
                 }
             }}

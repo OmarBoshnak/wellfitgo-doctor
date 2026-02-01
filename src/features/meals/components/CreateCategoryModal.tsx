@@ -71,6 +71,7 @@ export default function CreateCategoryModal({ visible, onClose, onSuccess }: Pro
                 emoji: selectedEmoji,
                 description: description.trim() || undefined,
                 autoGenerateRanges,
+                type: 'custom', // Add this to mark as custom category
             });
 
             resetForm();

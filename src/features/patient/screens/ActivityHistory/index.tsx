@@ -1,13 +1,14 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { colors } from '@/src/core/constants/Theme';
+import { isRTL } from '@/src/core/constants/translation';
+import clientsService from '@/src/shared/services/clients.service';
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityTimelineItem, ActivityItem } from './components/ActivityTimelineItem';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityItem, ActivityTimelineItem } from './components/ActivityTimelineItem';
 import { styles } from './styles';
 import { t } from './translations';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { isRTL } from '@/src/core/constants/translation';
-import { colors } from '@/src/core/constants/Theme';
 
 interface ActivityHistoryScreenProps {
     clientId?: string;
@@ -24,10 +25,91 @@ export default function ActivityHistoryScreen({ clientId: propClientId }: Activi
     // Local state for activities
     const [activities, setActivities] = useState<ActivityItem[] | undefined>(undefined);
 
-    // Fetch activities from backend - mocked
+    const activityTitles: Record<ActivityItem['type'], string> = {
+        weight: t.weightLogged,
+        meals: t.mealCompleted,
+        message: t.messageSent,
+        plan: t.planAssigned,
+        missed: t.missedMeal,
+        water: t.waterLogged,
+    };
+
+    const activityColors: Record<ActivityItem['type'], string> = {
+        weight: '#60A5FA',
+        meals: '#27AE61',
+        message: '#5073FE',
+        plan: '#8B5CF6',
+        missed: '#FBBF24',
+        water: '#27AE61',
+    };
+
+    const formatTime = (value: string | number) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleTimeString(isRTL ? 'ar-EG' : 'en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+        });
+    };
+
+    const formatDate = (value: string | number) => {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', {
+            month: 'short',
+            day: 'numeric',
+        });
+    };
+
+    const parseTimestamp = (value?: string | number) => {
+        if (!value) return Date.now();
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? Date.now() : date.getTime();
+    };
+
+    const mapActivity = (activity: any, index: number): ActivityItem => {
+        const rawTimestamp = activity.timestamp ?? activity.createdAt ?? activity.date ?? Date.now();
+        const timestamp = parseTimestamp(rawTimestamp);
+        const type = (activity.type as ActivityItem['type']) ?? 'message';
+        const actor = (activity.actor === 'doctor' ? 'coach' : activity.actor) as ActivityItem['actor'] || 'system';
+        return {
+            id: activity.id ?? activity._id ?? `${clientId || 'client'}-activity-${index}`,
+            type,
+            color: activity.color ?? activityColors[type],
+            title: activity.title ?? activityTitles[type],
+            description: activity.description ?? activity.subtext ?? activity.details ?? '',
+            time: activity.time ?? formatTime(timestamp),
+            date: activity.date ?? formatDate(timestamp),
+            actor,
+            actorName: activity.actorName ?? activity.actor?.name ?? '',
+            timestamp,
+        };
+    };
+
+    // Fetch activities from backend
     useEffect(() => {
-        // Simulating fetch
-        setActivities(require('../ClientProfile/mock').mockActivity);
+        let isMounted = true;
+
+        const fetchActivities = async () => {
+            if (!clientId) {
+                setActivities([]);
+                return;
+            }
+
+            setActivities(undefined);
+            const data = await clientsService.getClientActivity(clientId, 50);
+
+            if (!isMounted) return;
+
+            const mapped = (data || []).map(mapActivity).sort((a, b) => b.timestamp - a.timestamp);
+            setActivities(mapped);
+        };
+
+        fetchActivities();
+
+        return () => {
+            isMounted = false;
+        };
     }, [clientId]);
 
     // Memoize activities to prevent scroll reset

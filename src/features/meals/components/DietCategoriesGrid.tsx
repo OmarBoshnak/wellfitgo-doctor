@@ -104,19 +104,15 @@ export default function DietCategoriesGrid({
 
     // ============ DELETE HANDLER ============
     const handleDeleteCategory = async (categoryId: string) => {
-        // Custom categories have IDs prefixed with 'custom_'
-        if (categoryId.startsWith('custom_')) {
-            const convexId = categoryId.replace('custom_', '');
-            try {
-                await deleteDietCategory(convexId);
-                onDeleteCategory?.(categoryId);
-            } catch (error) {
-                console.error('Failed to delete category:', error);
-                Alert.alert(
-                    isRTL ? 'خطأ' : 'Error',
-                    t.deleteError
-                );
-            }
+        try {
+            await deleteDietCategory(categoryId);
+            onDeleteCategory?.(categoryId);
+        } catch (error) {
+            console.error('Failed to delete category:', error);
+            Alert.alert(
+                isRTL ? 'خطأ' : 'Error',
+                t.deleteError
+            );
         }
     };
 
@@ -141,16 +137,12 @@ export default function DietCategoriesGrid({
     const handleDietPress = useCallback((diet: { id: string; name: string; targetCalories?: number }) => {
         setShowSearchModal(false);
         setSearchQuery('');
-        // router.push({
-        //     pathname: '/doctor/diet-details',
-        //     params: {
-        //         dietId: diet.id,
-        //         dietRange: diet.targetCalories?.toString() ?? '',
-        //         dietDescription: '',
-        //         categoryName: '',
-        //         categoryEmoji: '',
-        //     },
-        // });
+        router.push({
+            pathname: '/doctor/diet-details',
+            params: {
+                dietId: diet.id,
+            },
+        });
     }, [router]);
 
     const renderIcon = (category: DietCategory) => {
@@ -330,59 +322,77 @@ export default function DietCategoriesGrid({
         </View>
     );
 
-    const renderCategoryCard = (category: DietCategory) => (
-        <View key={category.id} style={category.type === 'custom' ? styles.customCategoryWrapper : undefined}>
-            <TouchableOpacity
-                style={[styles.categoryCard, category.type === 'custom' && styles.customCategoryCard]}
-                onPress={() => handleCategoryPressInternal(category)}
-                activeOpacity={0.7}
-            >
-                <View style={styles.iconContainer}>
-                    {renderIcon(category)}
-                </View>
-                <View style={styles.categoryInfo}>
-                    {category.type === 'custom' ? (
-                        <View style={[styles.categoryNameRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <View style={styles.customBadge}>
-                                <Text style={styles.customBadgeText}>{isRTL ? 'مخصص' : 'Custom'}</Text>
-                            </View>
-                            <Text style={styles.categoryName}>{category.name}</Text>
-                        </View>
-                    ) : (
-                        <Text style={styles.categoryName}>{category.name}</Text>
-                    )}
-                    <View style={[styles.categoryMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                        <Text style={styles.categoryNameAr}>{category.nameAr}</Text>
-                        <View style={styles.dotSeparator} />
-                        <Text style={styles.categoryCount}>{category.dietCount || 0} {t.programs}</Text>
-                    </View>
-                </View>
-            </TouchableOpacity>
+    const renderCategoryCard = (category: DietCategory) => {
+        // Debug log to check category data
+        console.log('Category Debug:', {
+            name: category.name,
+            type: category.type,
+            id: category.id,
+            isCustom: category.type === 'custom'
+        });
 
-            {/* Delete Button for Custom Categories */}
-            {category.type === 'custom' && (
+        return (
+            <View key={category.id} style={category.type === 'custom' ? styles.customCategoryWrapper : undefined}>
                 <TouchableOpacity
-                    style={[styles.deleteButton, { [isRTL ? 'left' : 'right']: horizontalScale(8) }]}
-                    onPress={() => {
-                        Alert.alert(
-                            isRTL ? 'حذف الفئة' : 'Delete Category',
-                            isRTL ? `هل تريد حذف "${category.name}"؟` : `Delete "${category.name}"?`,
-                            [
-                                { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
-                                {
-                                    text: isRTL ? 'حذف' : 'Delete',
-                                    style: 'destructive',
-                                    onPress: () => handleDeleteCategory(category.id)
-                                },
-                            ]
-                        );
-                    }}
+                    style={[styles.categoryCard, category.type === 'custom' && styles.customCategoryCard]}
+                    onPress={() => handleCategoryPressInternal(category)}
+                    activeOpacity={0.7}
                 >
-                    <Trash2 size={horizontalScale(16)} color="#EB5757" />
+                    <View style={styles.iconContainer}>
+                        {renderIcon(category)}
+                    </View>
+                    <View style={styles.categoryInfo}>
+                        {category.type === 'custom' ? (
+                            <View style={[styles.categoryNameRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <View style={styles.customBadge}>
+                                    <Text style={styles.customBadgeText}>{isRTL ? 'مخصص' : 'Custom'}</Text>
+                                </View>
+                                <Text style={styles.categoryName}>{category.name}</Text>
+                            </View>
+                        ) : (
+                            <Text style={styles.categoryName}>{category.name}</Text>
+                        )}
+                        <View style={[styles.categoryMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                            <Text style={styles.categoryNameAr}>{category.nameAr}</Text>
+                            <View style={styles.dotSeparator} />
+                            <Text style={styles.categoryCount}>{category.dietCount || 0} {t.programs}</Text>
+                        </View>
+                    </View>
                 </TouchableOpacity>
-            )}
-        </View>
-    );
+
+                {/* Delete Button for Non-System Categories */}
+                {(() => {
+                    const shouldShowDelete = category.type !== 'system';
+                    console.log(`Delete button for "${category.name}":`, {
+                        shouldShow: shouldShowDelete,
+                        categoryType: category.type,
+                        categoryId: category.id
+                    });
+                    return shouldShowDelete;
+                })() && (
+                        <TouchableOpacity
+                            style={[styles.deleteButton, { [isRTL ? 'left' : 'right']: horizontalScale(8) }]}
+                            onPress={() => {
+                                Alert.alert(
+                                    isRTL ? 'حذف الفئة' : 'Delete Category',
+                                    isRTL ? `هل تريد حذف "${category.name}"؟` : `Delete "${category.name}"?`,
+                                    [
+                                        { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                                        {
+                                            text: isRTL ? 'حذف' : 'Delete',
+                                            style: 'destructive',
+                                            onPress: () => handleDeleteCategory(category._id || category.id)
+                                        },
+                                    ]
+                                );
+                            }}
+                        >
+                            <Trash2 size={horizontalScale(16)} color="#EB5757" />
+                        </TouchableOpacity>
+                    )}
+            </View>
+        );
+    };
 
     return (
         <View style={styles.container}>

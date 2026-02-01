@@ -1,28 +1,27 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, RefreshControl, Modal } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Calendar, Eye, Plus, Pencil, Trash2 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { colors, gradients } from '@/src/core/constants/Theme';
-import { isRTL } from '@/src/core/constants/translation';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
-import { t } from '../translations';
-import { DietPlanSelector } from './DietPlanSelector';
+import {colors, gradients} from '@/src/core/constants/Theme';
+import {isRTL} from '@/src/core/constants/translation';
+import {horizontalScale, ScaleFontSize, verticalScale} from '@/src/core/utils/scaling';
 import DietDetailsView from '@/src/features/meals/components/DietDetailsView';
+import {ClientMealPlan, plansService} from '@/src/shared/services/plans.service';
+import {LinearGradient} from 'expo-linear-gradient';
+import {Calendar, Eye, Pencil, Plus, Trash2} from 'lucide-react-native';
+import React, {useCallback, useEffect, useState} from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import {t} from '../translations';
+import {DietPlanSelector} from './DietPlanSelector';
 
 // ============ TYPES ============
 
-interface MealPlan {
-    id: string;
-    dietPlanId?: string;
-    weekStartDate: string;
-    weekEndDate: string;
-    status: "draft" | "published" | "active" | "completed" | "archived";
-    notes?: string;
-    mealsCompleted: number;
-    mealsTotal: number;
-    createdAt: number;
-}
 
 interface MealPlanTabProps {
     clientId: string;
@@ -54,31 +53,42 @@ const formatWeekRange = (start: string, end: string): { en: string; ar: string }
     };
 };
 
-const getStatusBadge = (status: MealPlan['status']) => {
-    const configs: Record<MealPlan['status'], { label: string; color: string; bg: string }> = {
-        active: { label: t.active, color: '#16A34A', bg: '#DCFCE7' },
-        published: { label: t.published, color: '#2563EB', bg: '#DBEAFE' },
-        completed: { label: t.completed, color: '#7C3AED', bg: '#EDE9FE' },
-        draft: { label: t.draft, color: '#6B7280', bg: '#F3F4F6' },
-        archived: { label: t.archived, color: '#9CA3AF', bg: '#F9FAFB' },
+const getStatusBadge = (status: ClientMealPlan['status']) => {
+    const configs: Record<ClientMealPlan['status'], { label: string; color: string; bg: string }> = {
+        active: {label: t.active, color: '#16A34A', bg: '#DCFCE7'},
+        published: {label: t.published, color: '#2563EB', bg: '#DBEAFE'},
+        completed: {label: t.completed, color: '#7C3AED', bg: '#EDE9FE'},
+        draft: {label: t.draft, color: '#6B7280', bg: '#F3F4F6'},
+        archived: {label: t.archived, color: '#9CA3AF', bg: '#F9FAFB'},
     };
     return configs[status];
 };
 
 // ============ COMPONENT ============
 
-export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
-    const router = useRouter();
+export function MealPlanTab({clientId, clientName}: MealPlanTabProps) {
+    // Local state for meal plans
+    const [plans, setPlans] = useState<ClientMealPlan[] | undefined>(undefined);
+    const [loading, setLoading] = useState(true);
 
-    // Local state instead of Convex queries
-    // Use mock data
-    const [plans, setPlans] = useState<MealPlan[]>(require('../mock').mockMealPlans);
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Fetch plans on mount - mocked
-    useEffect(() => {
-        // Simulating fetch if needed, but for now just setting initial state is enough
+    // Fetch plans from backend
+    const fetchPlans = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await plansService.getClientMealPlans(clientId);
+            setPlans(data);
+        } catch (err) {
+            console.error('Error fetching meal plans:', err);
+            setPlans([]);
+        } finally {
+            setLoading(false);
+        }
     }, [clientId]);
+
+    // Fetch plans on mount
+    useEffect(() => {
+        fetchPlans();
+    }, [fetchPlans]);
 
     // ============ STATE ============
     const [showDietSelector, setShowDietSelector] = useState(false);
@@ -90,12 +100,9 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Simulate API call
-        setTimeout(() => {
-            setPlans(require('../mock').mockMealPlans);
-            setRefreshing(false);
-        }, 1000);
-    }, [clientId]);
+        await fetchPlans();
+        setRefreshing(false);
+    }, [fetchPlans]);
 
     const handleDelete = (planId: string) => {
         const deleteTitle = isRTL ? 'حذف الخطة' : 'Delete Plan';
@@ -106,14 +113,13 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
             deleteTitle,
             deleteMessage,
             [
-                { text: t.cancel, style: 'cancel' },
+                {text: t.cancel, style: 'cancel'},
                 {
                     text: deleteBtn,
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            // Delete locally for now - endpoint can be added
-                            console.log('Deleting plan:', planId);
+                            await plansService.deleteClientMealPlan(clientId, planId);
                             setPlans(plans?.filter(p => p.id !== planId));
                         } catch (error) {
                             console.error('Delete error:', error);
@@ -158,7 +164,7 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
         setEditingPlanId(null);
     };
 
-    const renderPlanCard = ({ item }: { item: MealPlan }) => {
+    const renderPlanCard = ({item}: { item: ClientMealPlan }) => {
         const weekRange = formatWeekRange(item.weekStartDate, item.weekEndDate);
         const badge = getStatusBadge(item.status);
         const progress = item.mealsTotal > 0 ? (item.mealsCompleted / item.mealsTotal) * 100 : 0;
@@ -166,45 +172,45 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
         return (
             <View style={styles.planCard}>
                 {/* Header */}
-                <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    <View style={[styles.dateRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Calendar size={16} color={colors.primaryDark} />
+                <View style={[styles.cardHeader, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+                    <View style={[styles.statusBadge, {backgroundColor: badge.bg}]}>
+                        <Text style={[styles.statusText, {color: badge.color}]}>
+                            {badge.label}
+                        </Text>
+                    </View>
+                    <View style={[styles.dateRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <Text style={styles.weekRange}>
                             {isRTL ? weekRange.ar : weekRange.en}
                         </Text>
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
-                        <Text style={[styles.statusText, { color: badge.color }]}>
-                            {badge.label}
-                        </Text>
+                        <Calendar size={16} color={colors.primaryDark}/>
                     </View>
                 </View>
 
                 {/* Progress */}
                 <View style={styles.progressSection}>
-                    <View style={[styles.progressRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.progressLabel}>{t.mealsProgress}</Text>
+                    <View style={[styles.progressRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <Text style={styles.progressValue}>
                             {item.mealsCompleted}/{item.mealsTotal}
                         </Text>
+                        <Text style={styles.progressLabel}>{t.mealsProgress}</Text>
                     </View>
                     <View style={styles.progressBar}>
                         <LinearGradient
                             colors={gradients.primary}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[styles.progressFill, { width: `${progress}%` }]}
+                            start={{x: 0, y: 0}}
+                            end={{x: 1, y: 0}}
+                            style={[styles.progressFill, {width: `${progress}%`}]}
                         />
                     </View>
                 </View>
 
                 {/* Actions */}
-                <View style={[styles.cardActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                <View style={[styles.cardActions, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
                     <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => handleViewPlan(item.dietPlanId)}
                     >
-                        <Eye size={16} color={colors.primaryDark} />
+                        <Eye size={16} color={colors.primaryDark}/>
                         <Text style={styles.actionText}>{t.viewPlan}</Text>
                     </TouchableOpacity>
                     {item.status !== 'archived' && (
@@ -212,8 +218,8 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
                             style={styles.actionButton}
                             onPress={() => handleEdit(item.id)}
                         >
-                            <Pencil size={16} color="#F59E0B" />
-                            <Text style={[styles.actionText, { color: '#F59E0B' }]}>
+                            <Pencil size={16} color="#F59E0B"/>
+                            <Text style={[styles.actionText, {color: '#F59E0B'}]}>
                                 {isRTL ? 'تعديل' : 'Edit'}
                             </Text>
                         </TouchableOpacity>
@@ -222,8 +228,8 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
                         style={[styles.actionButton, styles.deleteButton]}
                         onPress={() => handleDelete(item.id)}
                     >
-                        <Trash2 size={16} color="#EF4444" />
-                        <Text style={[styles.actionText, { color: '#EF4444' }]}>
+                        <Trash2 size={16} color="#EF4444"/>
+                        <Text style={[styles.actionText, {color: '#EF4444'}]}>
                             {isRTL ? 'حذف' : 'Delete'}
                         </Text>
                     </TouchableOpacity>
@@ -236,7 +242,7 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
     if (plans === undefined) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primaryDark} />
+                <ActivityIndicator size="large" color={colors.primaryDark}/>
             </View>
         );
     }
@@ -250,11 +256,11 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
                 <TouchableOpacity onPress={handleCreatePlan}>
                     <LinearGradient
                         colors={gradients.primary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
                         style={styles.createButton}
                     >
-                        <Plus size={20} color="#FFFFFF" />
+                        <Plus size={20} color="#FFFFFF"/>
                         <Text style={styles.createButtonText}>{t.createFirstPlan}</Text>
                     </LinearGradient>
                 </TouchableOpacity>
@@ -278,11 +284,11 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
         <TouchableOpacity onPress={handleCreatePlan} style={styles.addPlanButton}>
             <LinearGradient
                 colors={gradients.primary}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 0}}
                 style={styles.addPlanGradient}
             >
-                <Plus size={20} color="#FFFFFF" />
+                <Plus size={20} color="#FFFFFF"/>
                 <Text style={styles.addPlanText}>
                     {isRTL ? 'إضافة خطة جديدة' : 'Add New Plan'}
                 </Text>
@@ -293,7 +299,7 @@ export function MealPlanTab({ clientId, clientName }: MealPlanTabProps) {
     return (
         <View style={styles.container}>
             <FlatList
-                data={plans as MealPlan[]}
+                data={plans as ClientMealPlan[]}
                 keyExtractor={(item) => item.id}
                 renderItem={renderPlanCard}
                 ListHeaderComponent={ListHeader}
@@ -352,7 +358,7 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(16),
         borderRadius: horizontalScale(12),
         shadowColor: colors.primaryDark,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
@@ -413,7 +419,7 @@ const styles = StyleSheet.create({
         padding: horizontalScale(16),
         marginBottom: verticalScale(12),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,
@@ -463,10 +469,12 @@ const styles = StyleSheet.create({
         backgroundColor: colors.bgSecondary,
         borderRadius: horizontalScale(4),
         overflow: 'hidden',
+        transform: [{scaleX: -1}]
     },
     progressFill: {
         height: '100%',
         borderRadius: horizontalScale(4),
+
     },
     cardActions: {
         gap: horizontalScale(12),
@@ -499,7 +507,7 @@ const styles = StyleSheet.create({
         bottom: verticalScale(16),
         right: horizontalScale(16),
         shadowColor: colors.primaryDark,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 6,

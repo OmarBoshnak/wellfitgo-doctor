@@ -1,8 +1,8 @@
-import { StyleSheet, Dimensions } from 'react-native';
-import { colors } from '@/src/core/constants/Theme';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
+import {Dimensions, StyleSheet} from 'react-native';
+import {colors} from '@/src/core/constants/Theme';
+import {horizontalScale, ScaleFontSize, verticalScale} from '@/src/core/utils/scaling';
 
-export const { width: SCREEN_WIDTH } = Dimensions.get('window');
+export const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 export const styles = StyleSheet.create({
     container: {
@@ -40,7 +40,7 @@ export const styles = StyleSheet.create({
         borderColor: '#FFFFFF',
         marginBottom: verticalScale(12),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 4,
@@ -97,7 +97,7 @@ export const styles = StyleSheet.create({
         justifyContent: 'center',
         height: verticalScale(70),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.06,
         shadowRadius: 12,
         elevation: 3,
@@ -143,7 +143,7 @@ export const styles = StyleSheet.create({
         borderRadius: horizontalScale(12),
         overflow: 'hidden',
         shadowColor: '#5073FE',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.25,
         shadowRadius: 12,
         elevation: 4,
@@ -249,7 +249,7 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,
@@ -331,7 +331,7 @@ export const styles = StyleSheet.create({
         borderRadius: horizontalScale(16),
         padding: horizontalScale(16),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,
@@ -345,6 +345,7 @@ export const styles = StyleSheet.create({
         fontSize: ScaleFontSize(16),
         fontWeight: '600',
         color: colors.textPrimary,
+
     },
     periodChipsContainer: {
         gap: horizontalScale(8),
@@ -381,7 +382,7 @@ export const styles = StyleSheet.create({
         padding: horizontalScale(16),
         marginTop: verticalScale(16),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,
@@ -448,7 +449,7 @@ export const styles = StyleSheet.create({
         padding: horizontalScale(24),
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,

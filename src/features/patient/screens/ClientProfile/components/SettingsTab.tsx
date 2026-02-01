@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, Switch, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal } from 'react-native';
-import { useRouter } from 'expo-router';
-import { Crown, Bell, User, AlertTriangle, MessageCircle, Check } from 'lucide-react-native';
 import { colors } from '@/src/core/constants/Theme';
 import { isRTL } from '@/src/core/constants/translation';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
+import { horizontalScale, ScaleFontSize, verticalScale } from '@/src/core/utils/scaling';
+import { useRouter } from 'expo-router';
+import { AlertTriangle, Bell, Check, Crown, MessageCircle, User } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { settingsService, ClientSettings, Doctor } from '@/src/shared/services/settings.service';
 import { t } from '../translations';
 
 // ============ TYPES ============
@@ -13,51 +14,92 @@ interface SettingsTabProps {
     clientId: string;
 }
 
-// Doctor options
-const DOCTORS = [
-    { id: 'gehad', name: isRTL ? 'د. جيهاد' : 'Dr. Gehad', nameEn: 'Gehad' },
-    { id: 'mostafa', name: isRTL ? 'د. مصطفى' : 'Dr. Mostafa', nameEn: 'Mostafa' },
-];
+interface CurrentUser {
+    role: 'admin' | 'coach';
+}
 
 // ============ COMPONENT ============
 
-export function SettingsTab({ clientId }: SettingsTabProps) {
+export function SettingsTab({clientId}: SettingsTabProps) {
     const router = useRouter();
 
     // Local state for settings and user data
-    const [settings, setSettings] = useState<any>(require('../mock').mockSettings);
-    const [currentUser, setCurrentUser] = useState<any>(require('../mock').mockCurrentUser);
-    const [doctors, setDoctors] = useState<any[]>(require('../mock').mockDoctors);
+    const [settings, setSettings] = useState<ClientSettings | null | undefined>(undefined);
+    const [currentUser, setCurrentUser] = useState<CurrentUser | undefined>(undefined);
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
 
-    // Fetch settings on mount - mocked
-    useEffect(() => {
-        // Simulating fetch if needed
+    // Fetch settings and user data on mount
+    const fetchSettings = useCallback(async () => {
+        try {
+            const settingsData = await settingsService.getClientSettings(clientId);
+            setSettings(settingsData);
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+            setSettings(null);
+        }
     }, [clientId]);
 
-    // Backend mutation callbacks - mocked
-    const updateNotifications = useCallback(async (data: any) => {
-        console.log('Mock update notifications:', data);
-        setSettings((prev: any) => ({
-            ...prev,
-            notificationSettings: {
-                ...prev.notificationSettings,
-                ...data
-            }
-        }));
-    }, [clientId]);
-
-    const archiveClientMutation = useCallback(async (data: any) => {
-        console.log('Mock archive client:', data);
-    }, [clientId]);
-
-    const assignChatDoctorMutation = useCallback(async (data: { clientId: string; doctorId: string }) => {
-        console.log('Mock assign doctor:', data);
-        setSettings((prev: any) => ({
-            ...prev,
-            assignedChatDoctor: data.doctorId
-        }));
-        return { message: 'Doctor assigned successfully (MOCK)' };
+    const fetchCurrentUser = useCallback(async () => {
+        // Mock current user - in real app, this would come from auth context
+        setCurrentUser({ role: 'coach' });
     }, []);
+
+    const fetchDoctors = useCallback(async () => {
+        try {
+            const doctorsData = await settingsService.getAvailableDoctors();
+            setDoctors(doctorsData);
+        } catch (error) {
+            console.error('Error fetching doctors:', error);
+            // Only show error if user is admin
+            if (currentUser?.role === 'admin') {
+                setDoctors([]);
+            }
+        }
+    }, [currentUser]);
+
+    useEffect(() => {
+        fetchSettings();
+        fetchCurrentUser();
+    }, [fetchSettings, fetchCurrentUser]);
+
+    useEffect(() => {
+        if (currentUser?.role === 'admin') {
+            fetchDoctors();
+        }
+    }, [fetchDoctors, currentUser]);
+
+    // Backend mutation callbacks
+    const updateNotifications = useCallback(async (notificationSettings: Partial<ClientSettings['notificationSettings']>) => {
+        try {
+            await settingsService.updateNotificationSettings(clientId, notificationSettings);
+            // Refresh settings after update
+            await fetchSettings();
+        } catch (error) {
+            console.error('Error updating notifications:', error);
+            throw error;
+        }
+    }, [clientId, fetchSettings]);
+
+    const archiveClientMutation = useCallback(async () => {
+        try {
+            await settingsService.archiveClient(clientId);
+        } catch (error) {
+            console.error('Error archiving client:', error);
+            throw error;
+        }
+    }, [clientId]);
+
+    const assignChatDoctorMutation = useCallback(async (doctorId: string) => {
+        try {
+            await settingsService.assignChatDoctor(clientId, doctorId);
+            // Refresh settings after assignment
+            await fetchSettings();
+            return {message: 'Doctor assigned successfully'};
+        } catch (error) {
+            console.error('Error assigning doctor:', error);
+            throw error;
+        }
+    }, [clientId, fetchSettings]);
 
     const [isSaving, setIsSaving] = useState(false);
     const [showDoctorModal, setShowDoctorModal] = useState(false);
@@ -67,10 +109,10 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
 
     const getSubscriptionLabel = (status: string): { label: string; color: string; bg: string } => {
         const configs: Record<string, { label: string; color: string; bg: string }> = {
-            active: { label: t.subscriptionActive, color: '#16A34A', bg: '#DCFCE7' },
-            trial: { label: t.subscriptionTrial, color: '#2563EB', bg: '#DBEAFE' },
-            paused: { label: t.subscriptionPaused, color: '#F59E0B', bg: '#FEF3C7' },
-            cancelled: { label: t.subscriptionCancelled, color: '#DC2626', bg: '#FEE2E2' },
+            active: {label: t.subscriptionActive, color: '#16A34A', bg: '#DCFCE7'},
+            trial: {label: t.subscriptionTrial, color: '#2563EB', bg: '#DBEAFE'},
+            paused: {label: t.subscriptionPaused, color: '#F59E0B', bg: '#FEF3C7'},
+            cancelled: {label: t.subscriptionCancelled, color: '#DC2626', bg: '#FEE2E2'},
         };
         return configs[status] ?? configs.active;
     };
@@ -78,7 +120,7 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
     const handleToggle = async (key: 'mealReminders' | 'weeklyCheckin' | 'coachMessages', value: boolean) => {
         setIsSaving(true);
         try {
-            await updateNotifications({ clientId, [key]: value });
+            await updateNotifications({[key]: value});
         } catch (error) {
             console.error('Toggle error:', error);
         }
@@ -90,13 +132,13 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
             t.confirmArchive,
             t.archiveClientDesc,
             [
-                { text: t.cancel, style: 'cancel' },
+                {text: t.cancel, style: 'cancel'},
                 {
                     text: t.confirm,
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await archiveClientMutation({ clientId });
+                            await archiveClientMutation();
                             router.back();
                         } catch (error) {
                             console.error('Archive error:', error);
@@ -110,7 +152,7 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
     const handleAssignDoctor = async (doctorId: string) => {
         setIsAssigning(true);
         try {
-            const result = await assignChatDoctorMutation({ clientId, doctorId });
+            const result = await assignChatDoctorMutation(doctorId);
             setShowDoctorModal(false);
             Alert.alert(
                 isRTL ? 'تم التعيين' : 'Assigned',
@@ -137,7 +179,7 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
     if (settings === undefined) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primaryDark} />
+                <ActivityIndicator size="large" color={colors.primaryDark}/>
             </View>
         );
     }
@@ -156,18 +198,18 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
         <View style={styles.container}>
             {/* Subscription Section */}
             <View style={styles.section}>
-                <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    <Crown size={20} color={colors.primaryDark} />
+                <View style={[styles.sectionHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
+                    <Crown size={20} color={colors.primaryDark}/>
                     <Text style={styles.sectionTitle}>{t.subscription}</Text>
                 </View>
                 <View style={styles.card}>
-                    <View style={[styles.row, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.label}>{t.subscription}</Text>
-                        <View style={[styles.badge, { backgroundColor: subBadge.bg }]}>
-                            <Text style={[styles.badgeText, { color: subBadge.color }]}>
+                    <View style={[styles.row, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+                        <View style={[styles.badge, {backgroundColor: subBadge.bg}]}>
+                            <Text style={[styles.badgeText, {color: subBadge.color}]}>
                                 {subBadge.label}
                             </Text>
                         </View>
+                        <Text style={styles.label}>{t.subscription}</Text>
                     </View>
                 </View>
             </View>
@@ -175,26 +217,26 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
             {/* Assign Chat Doctor Section - Admin Only */}
             {isAdmin && (
                 <View style={styles.section}>
-                    <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <MessageCircle size={20} color={colors.primaryDark} />
+                    <View style={[styles.sectionHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
+                        <MessageCircle size={20} color={colors.primaryDark}/>
                         <Text style={styles.sectionTitle}>{isRTL ? 'طبيب الدردشة' : 'Chat Doctor'}</Text>
                     </View>
                     <View style={styles.card}>
-                        <View style={[styles.row, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <Text style={styles.label}>{isRTL ? 'الطبيب المعين' : 'Assigned Doctor'}</Text>
+                        <View style={[styles.row, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                             <View style={[
                                 styles.badge,
-                                { backgroundColor: settings.assignedChatDoctor ? '#DCFCE7' : '#FEF3C7' }
+                                {backgroundColor: settings.assignedChatDoctor ? '#DCFCE7' : '#FEF3C7'}
                             ]}>
                                 <Text style={[
                                     styles.badgeText,
-                                    { color: settings.assignedChatDoctor ? '#16A34A' : '#F59E0B' }
+                                    {color: settings.assignedChatDoctor ? '#16A34A' : '#F59E0B'}
                                 ]}>
                                     {getAssignedDoctorName()}
                                 </Text>
                             </View>
+                            <Text style={styles.label}>{isRTL ? 'الطبيب المعين' : 'Assigned Doctor'}</Text>
                         </View>
-                        <View style={styles.divider} />
+                        <View style={styles.divider}/>
                         <TouchableOpacity
                             style={styles.assignButton}
                             onPress={() => setShowDoctorModal(true)}
@@ -212,52 +254,52 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
 
             {/* Notifications Section */}
             <View style={styles.section}>
-                <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    <Bell size={20} color={colors.primaryDark} />
+                <View style={[styles.sectionHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
+                    <Bell size={20} color={colors.primaryDark}/>
                     <Text style={styles.sectionTitle}>{t.notifications}</Text>
                 </View>
                 <View style={styles.card}>
                     {/* Meal Reminders */}
-                    <View style={[styles.toggleRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.toggleLabel}>{t.mealReminders}</Text>
+                    <View style={[styles.toggleRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <Switch
                             value={settings.notificationSettings.mealReminders}
                             onValueChange={(value) => handleToggle('mealReminders', value)}
-                            trackColor={{ false: '#E5E7EB', true: colors.primaryDark }}
+                            trackColor={{false: '#E5E7EB', true: colors.primaryDark}}
                             thumbColor="#FFFFFF"
                             disabled={isSaving}
-                            style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }}
+                            style={{transform: [{scaleX: isRTL ? -1 : 1}]}}
                         />
+                        <Text style={styles.toggleLabel}>{t.mealReminders}</Text>
                     </View>
 
-                    <View style={styles.divider} />
+                    <View style={styles.divider}/>
 
                     {/* Weekly Check-in */}
-                    <View style={[styles.toggleRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.toggleLabel}>{t.weeklyCheckin}</Text>
+                    <View style={[styles.toggleRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <Switch
                             value={settings.notificationSettings.weeklyCheckin}
                             onValueChange={(value) => handleToggle('weeklyCheckin', value)}
-                            trackColor={{ false: '#E5E7EB', true: colors.primaryDark }}
+                            trackColor={{false: '#E5E7EB', true: colors.primaryDark}}
                             thumbColor="#FFFFFF"
                             disabled={isSaving}
-                            style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }}
+                            style={{transform: [{scaleX: isRTL ? -1 : 1}]}}
                         />
+                        <Text style={styles.toggleLabel}>{t.weeklyCheckin}</Text>
                     </View>
 
-                    <View style={styles.divider} />
+                    <View style={styles.divider}/>
 
                     {/* Coach Messages */}
-                    <View style={[styles.toggleRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.toggleLabel}>{t.coachMessages}</Text>
+                    <View style={[styles.toggleRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <Switch
                             value={settings.notificationSettings.coachMessages}
                             onValueChange={(value) => handleToggle('coachMessages', value)}
-                            trackColor={{ false: '#E5E7EB', true: colors.primaryDark }}
+                            trackColor={{false: '#E5E7EB', true: colors.primaryDark}}
                             thumbColor="#FFFFFF"
                             disabled={isSaving}
-                            style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }}
+                            style={{transform: [{scaleX: isRTL ? -1 : 1}]}}
                         />
+                        <Text style={styles.toggleLabel}>{t.coachMessages}</Text>
                     </View>
                 </View>
             </View>
@@ -265,12 +307,12 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
             {/* Doctor Section - Show assigned doctor */}
             {settings.assignedChatDoctor && (
                 <View style={styles.section}>
-                    <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <User size={20} color={colors.primaryDark} />
+                    <View style={[styles.sectionHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
+                        <User size={20} color={colors.primaryDark}/>
                         <Text style={styles.sectionTitle}>{isRTL ? 'الطبيب' : 'Doctor'}</Text>
                     </View>
                     <View style={styles.card}>
-                        <View style={[styles.row, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <View style={[styles.row, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                             <Text style={styles.label}>{isRTL ? 'الطبيب المعين' : 'Assigned Doctor'}</Text>
                             <Text style={styles.value}>{getAssignedDoctorName()}</Text>
                         </View>
@@ -280,22 +322,25 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
 
             {/* Danger Zone */}
             <View style={styles.section}>
-                <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    <AlertTriangle size={20} color="#DC2626" />
-                    <Text style={[styles.sectionTitle, { color: '#DC2626' }]}>{t.dangerZone}</Text>
+                <View style={[styles.sectionHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
+                    <AlertTriangle size={20} color="#DC2626"/>
+                    <Text style={[styles.sectionTitle, {color: '#DC2626'}]}>{t.dangerZone}</Text>
                 </View>
                 <View style={[styles.card, styles.dangerCard]}>
-                    <View style={[styles.dangerRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.dangerLabel, { textAlign: isRTL ? 'left' : 'right' }]}>{t.archiveClient}</Text>
-                            <Text style={[styles.dangerDesc, { textAlign: isRTL ? 'left' : 'right' }]}>{t.archiveClientDesc}</Text>
-                        </View>
+                    <View style={[styles.dangerRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <TouchableOpacity
                             style={styles.dangerButton}
                             onPress={handleArchive}
                         >
                             <Text style={styles.dangerButtonText}>{t.archiveClient}</Text>
                         </TouchableOpacity>
+                        <View style={{flex: 1}}>
+                            <Text
+                                style={[styles.dangerLabel, {textAlign: isRTL ? 'right' : 'right'}]}>{t.archiveClient}</Text>
+                            <Text
+                                style={[styles.dangerDesc, {textAlign: isRTL ? 'right' : 'right'}]}>{t.archiveClientDesc}</Text>
+                        </View>
+
                     </View>
                 </View>
             </View>
@@ -314,7 +359,7 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
                         </Text>
 
                         {isAssigning ? (
-                            <ActivityIndicator size="large" color={colors.primaryDark} style={{ marginVertical: 20 }} />
+                            <ActivityIndicator size="large" color={colors.primaryDark} style={{marginVertical: 20}}/>
                         ) : (
                             <>
                                 {/* Show all available coaches */}
@@ -334,7 +379,7 @@ export function SettingsTab({ clientId }: SettingsTabProps) {
                                             {isRTL ? 'د.' : 'Dr.'} {doctor.firstName} {doctor.lastName || ''}
                                         </Text>
                                         {settings.assignedChatDoctor === doctor._id && (
-                                            <Check size={20} color={colors.primaryDark} />
+                                            <Check size={20} color={colors.primaryDark}/>
                                         )}
                                     </TouchableOpacity>
                                 ))}
@@ -398,7 +443,7 @@ const styles = StyleSheet.create({
         borderRadius: horizontalScale(16),
         padding: horizontalScale(16),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,

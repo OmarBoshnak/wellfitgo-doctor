@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { isRTL } from '@/src/core/constants/translation';
-import { styles } from '../styles';
-import { t } from '../translations';
+import {Text, View} from 'react-native';
+import {isRTL} from '@/src/core/constants/translation';
+import {styles} from '../styles';
+import {t} from '../translations';
 
 interface StatsCardsProps {
     startWeight: number;
@@ -14,20 +14,20 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({
-    startWeight,
-    currentWeight,
-    targetWeight,
-    startDate,
-    weightDiff,
-    remainingWeight,
-}: StatsCardsProps) {
+                               startWeight,
+                               currentWeight,
+                               targetWeight,
+                               startDate,
+                               weightDiff,
+                               remainingWeight,
+                           }: StatsCardsProps) {
     return (
         <View style={styles.statsCardsContainer}>
-            <View style={[styles.statsCards, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.statsCards, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                 <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>{t.start}</Text>
-                    <Text style={styles.statValue}>{startWeight}kg</Text>
-                    <Text style={styles.statSubtext}>{startDate}</Text>
+                    <Text style={styles.statLabel}>{t.target}</Text>
+                    <Text style={styles.statValue}>{targetWeight}kg</Text>
+                    <Text style={styles.statSubtext}>{remainingWeight}kg {t.toGo}</Text>
                 </View>
                 <View style={[styles.statCard, styles.statCardHighlight]}>
                     <Text style={styles.statLabel}>{t.current}</Text>
@@ -35,10 +35,11 @@ export function StatsCards({
                     <Text style={styles.statChange}>↓ {weightDiff}kg</Text>
                 </View>
                 <View style={styles.statCard}>
-                    <Text style={styles.statLabel}>{t.target}</Text>
-                    <Text style={styles.statValue}>{targetWeight}kg</Text>
-                    <Text style={styles.statSubtext}>{remainingWeight}kg {t.toGo}</Text>
+                    <Text style={styles.statLabel}>{t.start}</Text>
+                    <Text style={styles.statValue}>{startWeight}kg</Text>
+                    <Text style={styles.statSubtext}>{startDate}</Text>
                 </View>
+
             </View>
         </View>
     );

@@ -1,12 +1,12 @@
 import React from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
-import { ArrowDown, ArrowUp, Check, AlertCircle } from 'lucide-react-native';
-import { colors } from '@/src/core/constants/Theme';
-import { isRTL } from '@/src/core/constants/translation';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
-import { styles } from '../styles';
-import { t } from '../translations';
+import {ActivityIndicator, FlatList, Text, View} from 'react-native';
+import Svg, {Circle, Defs, LinearGradient as SvgLinearGradient, Stop} from 'react-native-svg';
+import {AlertCircle, ArrowDown, ArrowUp, Check} from 'lucide-react-native';
+import {colors} from '@/src/core/constants/Theme';
+import {isRTL} from '@/src/core/constants/translation';
+import {horizontalScale, verticalScale} from '@/src/core/utils/scaling';
+import {styles} from '../styles';
+import {t} from '../translations';
 
 // ============ TYPES ============
 
@@ -40,12 +40,12 @@ const feelingEmojis: Record<string, string> = {
 // ============ COMPONENT ============
 
 export function WeekSummary({
-    currentWeight,
-    weeklyChange,
-    remainingWeight,
-    weeklyStats,
-    isLoading = false,
-}: WeekSummaryProps) {
+                                currentWeight,
+                                weeklyChange,
+                                remainingWeight,
+                                weeklyStats,
+                                isLoading = false,
+                            }: WeekSummaryProps) {
     // Calculate meal completion percentage
     const mealsCompleted = weeklyStats?.mealsCompleted ?? 0;
     const mealsTotal = weeklyStats?.mealsTotal ?? 21; // 3 meals * 7 days
@@ -106,17 +106,21 @@ export function WeekSummary({
     };
 
     const renderWeekHeader = () => (
-        <View style={[styles.weekHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            <Text style={styles.weekHeaderTitle}>{t.thisWeek}</Text>
+        <View style={[styles.weekHeader, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}>
             <Text style={styles.weekHeaderDate}>{getWeekDateRange()}</Text>
+            <Text style={styles.weekHeaderTitle}>{t.thisWeek}</Text>
         </View>
     );
 
     const renderWeekCards = () => {
         if (isLoading) {
             return (
-                <View style={[styles.weekCardsContainer, { justifyContent: 'center', alignItems: 'center', height: verticalScale(140) }]}>
-                    <ActivityIndicator size="large" color={colors.primaryDark} />
+                <View style={[styles.weekCardsContainer, {
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: verticalScale(140)
+                }]}>
+                    <ActivityIndicator size="large" color={colors.primaryDark}/>
                 </View>
             );
         }
@@ -124,23 +128,24 @@ export function WeekSummary({
         return (
             <FlatList
                 horizontal
+                inverted
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.weekCardsContainer}
                 data={[
-                    { id: 'meals', type: 'meals' },
-                    { id: 'checkin', type: 'checkin' },
-                    { id: 'weight', type: 'weight' },
+                    {id: 'meals', type: 'meals'},
+                    {id: 'checkin', type: 'checkin'},
+                    {id: 'weight', type: 'weight'},
                 ]}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => {
+                renderItem={({item}) => {
                     if (item.type === 'meals') {
                         return (
                             <View style={styles.weekCard}>
                                 <Svg width={100} height={100} style={styles.progressRing}>
                                     <Defs>
                                         <SvgLinearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                            <Stop offset="0%" stopColor="#5073FE" />
-                                            <Stop offset="100%" stopColor="#02C3CD" />
+                                            <Stop offset="0%" stopColor="#5073FE"/>
+                                            <Stop offset="100%" stopColor="#02C3CD"/>
                                         </SvgLinearGradient>
                                     </Defs>
                                     <Circle
@@ -176,12 +181,12 @@ export function WeekSummary({
                             <View style={styles.weekCard}>
                                 <View style={[
                                     styles.checkIconContainer,
-                                    !hasCheckedIn && { backgroundColor: colors.warning }
+                                    !hasCheckedIn && {backgroundColor: colors.warning}
                                 ]}>
                                     {hasCheckedIn ? (
-                                        <Check size={horizontalScale(24)} color="#FFFFFF" />
+                                        <Check size={horizontalScale(24)} color="#FFFFFF"/>
                                     ) : (
-                                        <AlertCircle size={horizontalScale(24)} color="#FFFFFF" />
+                                        <AlertCircle size={horizontalScale(24)} color="#FFFFFF"/>
                                     )}
                                 </View>
                                 <Text style={styles.weekCardTitle}>
@@ -198,15 +203,16 @@ export function WeekSummary({
                         <View style={styles.weekCard}>
                             <Text style={styles.weekCardLabel}>{t.weightThisWeek}</Text>
                             <Text style={styles.weekCardWeightValue}>{currentWeight.toFixed(1)} kg</Text>
-                            <View style={[styles.weightChangeRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <View
+                                style={[styles.weightChangeRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                                 {isGain ? (
-                                    <ArrowUp size={horizontalScale(14)} color={colors.error} />
+                                    <ArrowUp size={horizontalScale(14)} color={colors.error}/>
                                 ) : (
-                                    <ArrowDown size={horizontalScale(14)} color={colors.success} />
+                                    <ArrowDown size={horizontalScale(14)} color={colors.success}/>
                                 )}
                                 <Text style={[
                                     styles.weightChangeText,
-                                    isGain && { color: colors.error }
+                                    isGain && {color: colors.error}
                                 ]}>
                                     {Math.abs(weeklyChange).toFixed(1)} kg
                                 </Text>

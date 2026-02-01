@@ -1,25 +1,25 @@
 import React from 'react';
-import { View, FlatList, ListRenderItem, ActivityIndicator, Text } from 'react-native';
-import { useClientProfileScreen, ClientProfile } from './hooks/useClientProfileScreen';
+import {ActivityIndicator, FlatList, ListRenderItem, Text, View} from 'react-native';
+import {useClientProfileScreen} from './hooks/useClientProfileScreen';
 import {
-    ProfileHeader,
-    StatsCards,
     ActionButtons,
-    ProfileTabs,
-    WeekSummary,
-    WeightProgressChart,
     ActivityTimeline,
     PlaceholderSection,
+    ProfileHeader,
+    ProfileTabs,
+    StatsCards,
+    WeekSummary,
+    WeightProgressChart,
 } from './components';
-import { MealPlanTab } from './components/MealPlanTab';
-import { NotesTab } from './components/NotesTab';
-import { SettingsTab } from './components/SettingsTab';
-import { WeightRecordsTab } from './components/WeightRecordsTab';
-import { styles } from './styles';
-import { SectionItem, TABS } from './types';
-import { AddCallModal } from '@/src/features/calendar/day/components/AddCallModal';
-import { colors } from '@/src/core/constants/Theme';
-import { isRTL } from '@/src/core/constants/translation';
+import {MealPlanTab} from './components/MealPlanTab';
+import {NotesTab} from './components/NotesTab';
+import {SettingsTab} from './components/SettingsTab';
+import {WeightRecordsTab} from './components/WeightRecordsTab';
+import {styles} from './styles';
+import {SectionItem, TABS} from './types';
+import {AddCallModal} from '@/src/features/calendar/day/components/AddCallModal';
+import {colors} from '@/src/core/constants/Theme';
+import {isRTL} from '@/src/core/constants/translation';
 
 // ============ TYPES ============
 
@@ -32,7 +32,7 @@ interface ClientProfileScreenProps {
 function LoadingSkeleton() {
     return (
         <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primaryDark} />
+            <ActivityIndicator size="large" color={colors.primaryDark}/>
             <Text style={styles.loadingText}>
                 {isRTL ? "جاري التحميل..." : "Loading..."}
             </Text>
@@ -53,7 +53,7 @@ function NotFound() {
 
 // ============ MAIN COMPONENT ============
 
-export default function ClientProfileScreen({ clientId }: ClientProfileScreenProps) {
+export default function ClientProfileScreen({clientId}: ClientProfileScreenProps) {
     const {
         activeTab,
         chartPeriod,
@@ -81,15 +81,15 @@ export default function ClientProfileScreen({ clientId }: ClientProfileScreenPro
 
     // Loading state
     if (isLoading) {
-        return <LoadingSkeleton />;
+        return <LoadingSkeleton/>;
     }
 
     // Not found state
     if (!client) {
-        return <NotFound />;
+        return <NotFound/>;
     }
 
-    const renderSection: ListRenderItem<SectionItem> = ({ item }) => {
+    const renderSection: ListRenderItem<SectionItem> = ({item}) => {
         switch (item.type) {
             case 'header':
                 return (
@@ -158,31 +158,31 @@ export default function ClientProfileScreen({ clientId }: ClientProfileScreenPro
             case 'activity':
                 return (
                     <View style={styles.tabContent}>
-                        <ActivityTimeline activities={activities} clientId={client.id} />
+                        <ActivityTimeline activities={activities} clientId={client.id}/>
                     </View>
                 );
             case 'mealPlanContent':
                 return (
                     <View style={styles.tabContent}>
-                        <MealPlanTab clientId={client.id} clientName={client.name} />
+                        <MealPlanTab clientId={client.id} clientName={client.name}/>
                     </View>
                 );
             case 'weightRecordsContent':
                 return (
                     <View style={styles.tabContent}>
-                        <WeightRecordsTab clientId={client.id} />
+                        <WeightRecordsTab clientId={client.id}/>
                     </View>
                 );
             case 'notesContent':
                 return (
                     <View style={styles.tabContent}>
-                        <NotesTab clientId={client.id} />
+                        <NotesTab clientId={client.id}/>
                     </View>
                 );
             case 'settingsContent':
                 return (
                     <View style={styles.tabContent}>
-                        <SettingsTab clientId={client.id} />
+                        <SettingsTab clientId={client.id}/>
                     </View>
                 );
             case 'placeholder':

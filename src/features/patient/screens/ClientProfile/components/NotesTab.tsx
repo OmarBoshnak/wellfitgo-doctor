@@ -1,11 +1,21 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, FlatList, RefreshControl } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Save, Trash2, FileText, Plus, X } from 'lucide-react-native';
 import { colors, gradients } from '@/src/core/constants/Theme';
 import { isRTL } from '@/src/core/constants/translation';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
-import { t } from '../translations';
+import { horizontalScale, ScaleFontSize, verticalScale } from '@/src/core/utils/scaling';
+import clientsService from '@/src/shared/services/clients.service';
+import { LinearGradient } from 'expo-linear-gradient';
+import { FileText, Plus, Save, Trash2, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 
 // ============ TYPES ============
 
@@ -22,16 +32,24 @@ interface NotesTabProps {
 
 // ============ COMPONENT ============
 
-export function NotesTab({ clientId }: NotesTabProps) {
+export function NotesTab({clientId}: NotesTabProps) {
     // Local state instead of Convex queries
-    // Use mock data
-    const [notes, setNotes] = useState<Note[]>(require('../mock').mockNotes);
-    const [isLoading, setIsLoading] = useState(false);
+    const [notes, setNotes] = useState<Note[] | undefined>(undefined);
 
-    // Mock fetch
-    useEffect(() => {
-        // Simulating fetch if needed
+    // Fetch notes from backend
+    const fetchNotes = useCallback(async () => {
+        try {
+            const notesData = await clientsService.getClientNotes(clientId);
+            setNotes(notesData);
+        } catch (error) {
+            console.error('Error fetching notes:', error);
+            setNotes([]);
+        }
     }, [clientId]);
+
+    useEffect(() => {
+        fetchNotes();
+    }, [fetchNotes]);
 
     const [isAdding, setIsAdding] = useState(false);
     const [newNoteContent, setNewNoteContent] = useState('');
@@ -42,12 +60,9 @@ export function NotesTab({ clientId }: NotesTabProps) {
 
     const handleRefresh = useCallback(async () => {
         setRefreshing(true);
-        // Simulate refresh
-        setTimeout(() => {
-            setNotes(require('../mock').mockNotes);
-            setRefreshing(false);
-        }, 1000);
-    }, [clientId]);
+        await fetchNotes();
+        setRefreshing(false);
+    }, [fetchNotes]);
 
     const handleAddNote = async () => {
         if (!newNoteContent.trim()) {
@@ -56,20 +71,18 @@ export function NotesTab({ clientId }: NotesTabProps) {
         }
 
         setIsSaving(true);
-        // Simulate API call
-        setTimeout(() => {
-            const newNote: Note = {
-                id: Date.now().toString(),
-                content: newNoteContent,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-            };
+        try {
+            const newNote = await clientsService.createClientNote(clientId, newNoteContent);
             setNotes(prev => [newNote, ...(prev || [])]);
             setNewNoteContent('');
             setIsAdding(false);
-            setIsSaving(false);
             Alert.alert('✅', isRTL ? 'تم حفظ الملاحظة بنجاح' : 'Note saved successfully');
-        }, 500);
+        } catch (error) {
+            console.error('Save note error:', error);
+            Alert.alert(isRTL ? 'خطأ' : 'Error', isRTL ? 'فشل حفظ الملاحظة' : 'Failed to save note');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDeleteNote = (noteId: string) => {
@@ -81,14 +94,18 @@ export function NotesTab({ clientId }: NotesTabProps) {
             deleteTitle,
             deleteMessage,
             [
-                { text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel' },
+                {text: isRTL ? 'إلغاء' : 'Cancel', style: 'cancel'},
                 {
                     text: deleteBtn,
                     style: 'destructive',
                     onPress: async () => {
-                        // Mock delete
-                        console.log('Deleting note:', noteId);
-                        setNotes(notes?.filter(n => n.id !== noteId));
+                        try {
+                            await clientsService.deleteClientNote(clientId, noteId);
+                            setNotes(notes?.filter(n => n.id !== noteId));
+                        } catch (error) {
+                            console.error('Delete note error:', error);
+                            Alert.alert(isRTL ? 'خطأ' : 'Error', isRTL ? 'فشل حذف الملاحظة' : 'Failed to delete note');
+                        }
                     },
                 },
             ]
@@ -106,23 +123,23 @@ export function NotesTab({ clientId }: NotesTabProps) {
 
     // ============ RENDER NOTE CARD ============
 
-    const renderNoteCard = ({ item }: { item: Note }) => (
+    const renderNoteCard = ({item}: { item: Note }) => (
         <View style={styles.noteCard}>
-            <View style={[styles.cardHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                <View style={styles.cardIconContainer}>
-                    <FileText size={18} color={colors.primaryDark} />
-                </View>
-                <View style={[styles.cardActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    <Text style={styles.noteDate}>{formatDate(item.createdAt)}</Text>
+            <View style={[styles.cardHeader, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+                <View style={[styles.cardActions, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                     <TouchableOpacity
                         style={styles.deleteButton}
                         onPress={() => handleDeleteNote(item.id)}
                     >
-                        <Trash2 size={16} color="#EF4444" />
+                        <Trash2 size={16} color="#EF4444"/>
                     </TouchableOpacity>
+                    <Text style={styles.noteDate}>{formatDate(item.createdAt)}</Text>
+                </View>
+                <View style={styles.cardIconContainer}>
+                    <FileText size={18} color={colors.primaryDark}/>
                 </View>
             </View>
-            <Text style={[styles.noteContent, { textAlign: isRTL ? 'left' : 'right' }]}>
+            <Text style={[styles.noteContent, {textAlign: isRTL ? 'right' : 'right'}]}>
                 {item.content}
             </Text>
         </View>
@@ -137,11 +154,11 @@ export function NotesTab({ clientId }: NotesTabProps) {
                 <TouchableOpacity onPress={() => setIsAdding(true)} style={styles.addNoteButton}>
                     <LinearGradient
                         colors={gradients.primary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
                         style={styles.addNoteGradient}
                     >
-                        <Plus size={20} color="#FFFFFF" />
+                        <Plus size={20} color="#FFFFFF"/>
                         <Text style={styles.addNoteText}>
                             {isRTL ? 'إضافة ملاحظة جديدة' : 'Add New Note'}
                         </Text>
@@ -152,16 +169,19 @@ export function NotesTab({ clientId }: NotesTabProps) {
             {/* Add Note Form */}
             {isAdding && (
                 <View style={styles.addNoteForm}>
-                    <View style={[styles.formHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.formHeader, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <Text style={styles.formTitle}>
                             {isRTL ? 'ملاحظة جديدة' : 'New Note'}
                         </Text>
-                        <TouchableOpacity onPress={() => { setIsAdding(false); setNewNoteContent(''); }}>
-                            <X size={24} color={colors.textSecondary} />
+                        <TouchableOpacity onPress={() => {
+                            setIsAdding(false);
+                            setNewNoteContent('');
+                        }}>
+                            <X size={24} color={colors.textSecondary}/>
                         </TouchableOpacity>
                     </View>
                     <TextInput
-                        style={[styles.textInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                        style={[styles.textInput, {textAlign: isRTL ? 'right' : 'left'}]}
                         value={newNoteContent}
                         onChangeText={setNewNoteContent}
                         placeholder={isRTL ? 'اكتب ملاحظتك هنا...' : 'Write your note here...'}
@@ -177,15 +197,15 @@ export function NotesTab({ clientId }: NotesTabProps) {
                     >
                         <LinearGradient
                             colors={gradients.primary}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
+                            start={{x: 0, y: 0}}
+                            end={{x: 1, y: 0}}
                             style={styles.saveButton}
                         >
                             {isSaving ? (
-                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                <ActivityIndicator size="small" color="#FFFFFF"/>
                             ) : (
                                 <>
-                                    <Save size={20} color="#FFFFFF" />
+                                    <Save size={20} color="#FFFFFF"/>
                                     <Text style={styles.saveButtonText}>
                                         {isRTL ? 'حفظ الملاحظة' : 'Save Note'}
                                     </Text>
@@ -216,7 +236,7 @@ export function NotesTab({ clientId }: NotesTabProps) {
     if (notes === undefined) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primaryDark} />
+                <ActivityIndicator size="large" color={colors.primaryDark}/>
             </View>
         );
     }
@@ -265,7 +285,7 @@ const styles = StyleSheet.create({
         marginBottom: verticalScale(16),
         borderRadius: horizontalScale(12),
         shadowColor: colors.primaryDark,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {width: 0, height: 4},
         shadowOpacity: 0.2,
         shadowRadius: 8,
         elevation: 4,
@@ -290,7 +310,7 @@ const styles = StyleSheet.create({
         padding: horizontalScale(16),
         marginBottom: verticalScale(16),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,
@@ -338,7 +358,7 @@ const styles = StyleSheet.create({
         padding: horizontalScale(16),
         marginBottom: verticalScale(12),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.04,
         shadowRadius: 8,
         elevation: 2,

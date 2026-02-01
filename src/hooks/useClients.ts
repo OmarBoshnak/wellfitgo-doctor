@@ -2,10 +2,10 @@
  * Custom hook for fetching and managing clients
  * Supports filtering by weekly check-in day
  */
-import { useCallback, useState, useEffect } from "react";
+import { clientsService } from "@/src/shared/services/clients.service";
+import { useCallback, useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { isRTL } from "../i18n";
-import { clientsService } from "@/src/shared/services/clients.service";
 
 // ============ TYPES ============
 
@@ -19,6 +19,7 @@ export interface Client {
     email: string;
     phone?: string;
     avatar: string | null;
+    height?: number;
 
     // Weight data
     startWeight: number;
