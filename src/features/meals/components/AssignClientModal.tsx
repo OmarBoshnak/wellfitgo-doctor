@@ -259,6 +259,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
             onPress={onToggle}
             activeOpacity={0.7}
         >
+            <Text style={[styles.checkboxLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{label}</Text>
             {checked ? (
                 <LinearGradient
                     colors={gradients.primary}
@@ -271,7 +272,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
             ) : (
                 <View style={styles.checkboxUnchecked} />
             )}
-            <Text style={[styles.checkboxLabel, { textAlign: isRTL ? 'left' : 'right' }]}>{label}</Text>
+
         </TouchableOpacity>
     );
 
@@ -286,20 +287,21 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                 onPress={() => toggleClient(client.id)}
                 activeOpacity={0.7}
             >
-                {client.avatarUrl ? (
-                    <Image
-                        source={{ uri: client.avatarUrl }}
-                        style={[styles.avatar, !isSelected && hasExistingPlan && styles.avatarInactive]}
-                    />
+                {isSelected ? (
+                    <LinearGradient
+                        colors={gradients.primary}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.selectionChecked}
+                    >
+                        <Check size={horizontalScale(16)} color="#FFFFFF" strokeWidth={3} />
+                    </LinearGradient>
                 ) : (
-                    <View style={[styles.avatar, styles.avatarPlaceholder, !isSelected && hasExistingPlan && styles.avatarInactive]}>
-                        <Text style={styles.avatarPlaceholderText}>
-                            {client.firstName.charAt(0).toUpperCase()}
-                        </Text>
-                    </View>
+                    <View style={styles.selectionUnchecked} />
                 )}
+
                 <View style={styles.clientInfo}>
-                    <Text style={[styles.clientName, { textAlign: isRTL ? 'left' : 'right' }]}>
+                    <Text style={[styles.clientName, { textAlign: isRTL ? 'right' : 'right' }]}>
                         {fullName}
                     </Text>
                     {hasExistingPlan ? (
@@ -314,23 +316,24 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                         </View>
                     ) : (
                         <View style={styles.noPlanBadge}>
-                            <Text style={styles.noPlanDot}>🔴</Text>
                             <Text style={styles.noPlanText}>{t.noPlan}</Text>
+                            <Text style={styles.noPlanDot}>🔴</Text>
                         </View>
                     )}
                 </View>
-                {isSelected ? (
-                    <LinearGradient
-                        colors={gradients.primary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.selectionChecked}
-                    >
-                        <Check size={horizontalScale(16)} color="#FFFFFF" strokeWidth={3} />
-                    </LinearGradient>
+                {client.avatarUrl ? (
+                    <Image
+                        source={{ uri: client.avatarUrl }}
+                        style={[styles.avatar, !isSelected && hasExistingPlan && styles.avatarInactive]}
+                    />
                 ) : (
-                    <View style={styles.selectionUnchecked} />
+                    <View style={[styles.avatar, styles.avatarPlaceholder, !isSelected && hasExistingPlan && styles.avatarInactive]}>
+                        <Text style={styles.avatarPlaceholderText}>
+                            {client.firstName.charAt(0).toUpperCase()}
+                        </Text>
+                    </View>
                 )}
+
             </TouchableOpacity>
         );
     };
@@ -360,9 +363,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                             <View style={styles.successIconGlow} />
                             <CheckCircle
                                 size={horizontalScale(64)}
-                                color="#28af62"
-                                fill="#28af62"
-                                strokeWidth={0}
+                                color={colors.bgPrimary}
                             />
                         </View>
 
@@ -449,11 +450,11 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
 
                         {/* Header */}
                         <View style={styles.header}>
-                            <Text style={[styles.headerTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
+                            <Text style={[styles.headerTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
                                 {t.assignDietProgram}
                             </Text>
-                            <Text style={[styles.headerSubtitle, { textAlign: isRTL ? 'left' : 'right' }]}>
-                                🥗 {diet?.name || 'Classic'} {diet?.range || '1200-1300'}
+                            <Text style={[styles.headerSubtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                {diet?.name || 'Classic'} 🥗 {diet?.range || ''}
                             </Text>
                         </View>
 
@@ -462,21 +463,21 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                             <View style={styles.settingsSection}>
                                 {/* Clients Dropdown */}
                                 <View style={styles.settingGroup}>
-                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                         {t.selectClients.toUpperCase()}
                                     </Text>
                                     <TouchableOpacity
-                                        style={[styles.settingButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                                        style={[styles.settingButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
                                         onPress={() => setShowClientsPicker(!showClientsPicker)}
                                     >
                                         <View style={[styles.settingButtonLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                            <Users size={horizontalScale(18)} color={selectedClients.length > 0 ? colors.primaryDark : colors.textSecondary} />
                                             <Text style={[
                                                 styles.settingButtonText,
                                                 selectedClients.length > 0 && styles.settingButtonTextActive
                                             ]}>
                                                 {getSelectedClientsLabel()}
                                             </Text>
+                                            <Users size={horizontalScale(18)} color={selectedClients.length > 0 ? colors.primaryDark : colors.textSecondary} />
                                         </View>
                                         <ChevronDown
                                             size={horizontalScale(20)}
@@ -489,7 +490,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                                     {showClientsPicker && (
                                         <View style={styles.clientsDropdown}>
                                             {/* Search within dropdown */}
-                                            <View style={[styles.searchInputWrapper, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                                            <View style={[styles.searchInputWrapper, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                                                 <Search size={horizontalScale(18)} color={colors.textSecondary} />
                                                 <TextInput
                                                     style={[styles.searchInput, { textAlign: isRTL ? 'right' : 'left' }]}
@@ -515,7 +516,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                                                     {/* Clients Without Plan */}
                                                     {clientsWithoutPlan.length > 0 && (
                                                         <View style={styles.clientSection}>
-                                                            <Text style={[styles.clientSectionTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                                            <Text style={[styles.clientSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
                                                                 {t.clientsWithoutPlan}
                                                             </Text>
                                                             {clientsWithoutPlan.map((client) => renderClientCard(client, false))}
@@ -525,7 +526,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                                                     {/* Clients With Plan */}
                                                     {clientsWithPlan.length > 0 && (
                                                         <View style={styles.clientSection}>
-                                                            <Text style={[styles.clientSectionTitle, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                                            <Text style={[styles.clientSectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
                                                                 {t.clientsWithPlan}
                                                             </Text>
                                                             {clientsWithPlan.map((client) => renderClientCard(client, true))}
@@ -539,20 +540,20 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
 
                                 {/* Start Date */}
                                 <View style={styles.settingGroup}>
-                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                         {t.startDate.toUpperCase()}
                                     </Text>
                                     <TouchableOpacity
                                         style={[styles.settingButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                                         onPress={() => setShowDatePicker(true)}
                                     >
+                                        <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
                                         <View style={[styles.settingButtonLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                                            <Calendar size={horizontalScale(18)} color={colors.primaryDark} />
                                             <Text style={styles.settingButtonText}>
                                                 {formatDisplayDate(startDate)}
                                             </Text>
+                                            <Calendar size={horizontalScale(18)} color={colors.primaryDark} />
                                         </View>
-                                        <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
                                     </TouchableOpacity>
                                     {showDatePicker && (
                                         <DateTimePicker
@@ -567,15 +568,15 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
 
                                 {/* Duration */}
                                 <View style={styles.settingGroup}>
-                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                         {t.duration.toUpperCase()}
                                     </Text>
                                     <TouchableOpacity
                                         style={[styles.settingButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                                         onPress={() => setShowDurationPicker(!showDurationPicker)}
                                     >
-                                        <Text style={styles.settingButtonText}>{getSelectedDurationLabel()}</Text>
                                         <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
+                                        <Text style={styles.settingButtonText}>{getSelectedDurationLabel()}</Text>
                                     </TouchableOpacity>
                                     {showDurationPicker && (
                                         <View style={styles.durationOptions}>
@@ -609,7 +610,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
 
                                 {/* Notifications - Single Option */}
                                 <View style={styles.settingGroup}>
-                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'left' : 'right' }]}>
+                                    <Text style={[styles.settingLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
                                         {t.notifications.toUpperCase()}
                                     </Text>
                                     <View style={styles.checkboxList}>
@@ -621,9 +622,6 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
 
                         {/* Footer */}
                         <View style={[styles.footer, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                                <Text style={styles.cancelButtonText}>{t.cancel}</Text>
-                            </TouchableOpacity>
                             <TouchableOpacity
                                 style={styles.assignButtonWrapper}
                                 onPress={handleAssign}
@@ -644,6 +642,10 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                                     </Text>
                                 </LinearGradient>
                             </TouchableOpacity>
+                            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+                                <Text style={styles.cancelButtonText}>{t.cancel}</Text>
+                            </TouchableOpacity>
+
                         </View>
                     </View>
                 </View>
@@ -743,13 +745,14 @@ const styles = StyleSheet.create({
         width: horizontalScale(44),
         height: horizontalScale(44),
         borderRadius: horizontalScale(22),
-        marginRight: horizontalScale(12),
+        marginHorizontal: horizontalScale(8),
     },
     avatarInactive: {
         opacity: 0.7,
     },
     clientInfo: {
         flex: 1,
+        alignItems: 'flex-end'
     },
     clientName: {
         fontSize: ScaleFontSize(16),
@@ -805,14 +808,14 @@ const styles = StyleSheet.create({
         color: '#F59E0B',
     },
     avatarPlaceholder: {
-        backgroundColor: colors.bgSecondary,
+        backgroundColor: colors.primaryDark,
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarPlaceholderText: {
         fontSize: ScaleFontSize(18),
         fontWeight: '600',
-        color: colors.primaryDark,
+        color: colors.bgSecondary,
     },
     activePlanBadge: {
         alignItems: 'center',

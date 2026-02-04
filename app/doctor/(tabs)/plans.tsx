@@ -4,6 +4,7 @@ import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndi
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, BarChart3, AlertCircle, AlertTriangle } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import {
     DietCategoriesGrid,
@@ -11,15 +12,13 @@ import {
     useDoctorPlans,
     useDoctorPlansMutations,
 } from '@/src/features/meals';
-import type { DoctorPlanItem, DraftPlanItem } from '@/src/features/meals';
+import type { DoctorPlanItem } from '@/src/features/meals';
 import { isRTL } from '@/src/i18n';
 import { colors, gradients } from '@/src/core/constants/Theme';
-import ClientProgressView from '@/src/features/plans/ClientProgressView';
 
 const t = {
     plans: isRTL ? 'الخطط' : 'Plans',
     activePlans: isRTL ? 'الخطط النشطة' : 'Active Plans',
-    drafts: isRTL ? 'المسودات' : 'Drafts',
     dietPrograms: isRTL ? 'برامج التغذية' : 'Diet Programs',
     activeClientPlans: isRTL ? 'خطط العملاء النشطة' : 'ACTIVE CLIENT PLANS',
     allCategories: isRTL ? 'جميع الفئات' : 'All Categories',
@@ -39,53 +38,58 @@ const t = {
     extendPlan: isRTL ? 'تمديد الخطة' : 'Extend Plan',
     remindClient: isRTL ? 'تذكير العميل' : 'Remind Client',
     noActivePlans: isRTL ? 'لا توجد خطط نشطة' : 'No Active Plans',
-    noDrafts: isRTL ? 'لا توجد مسودات' : 'No Drafts',
     assignDietPrograms: isRTL ? 'قم بتعيين برامج غذائية لعملائك للبدء' : 'Assign diet programs to your clients to get started',
     browsePrograms: isRTL ? 'تصفح برامج التغذية' : 'Browse Diet Programs',
-    // Drafts translations
-    draftPlans: isRTL ? 'خطط مسودة' : 'DRAFT PLANS',
-    draftDescription: isRTL ? 'المسودات هي خطط لم يتم تعيينها للعملاء بعد' : 'Drafts are plans not yet assigned to clients',
-    basedOn: isRTL ? 'مبني على' : 'Based on',
-    lastEdited: isRTL ? 'آخر تعديل' : 'Last edited',
     complete: isRTL ? 'مكتمل' : 'complete',
     progress: isRTL ? 'التقدم' : 'Progress',
     delete: isRTL ? 'حذف' : 'Delete',
-    continueEditing: isRTL ? 'متابعة التحرير' : 'Continue Editing',
-    hoursAgo: isRTL ? 'ساعات مضت' : 'hours ago',
 };
 
 // Translations for loading/empty states
 const loadingText = isRTL ? 'جاري التحميل...' : 'Loading...';
 
-type TabType = 'active' | 'drafts' | 'programs';
+type TabType = 'active' | 'programs';
 type ProgramsViewType = 'categories' | 'ranges' | 'details' | 'edit' | 'editMeal';
 
 export default function PlansScreen() {
     const insets = useSafeAreaInsets();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<TabType>('active');
-    const [selectedPlan, setSelectedPlan] = useState<DoctorPlanItem | null>(null);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-    const [showClientProgress, setShowClientProgress] = useState(false);
     const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
     const [categoriesRefreshKey, setCategoriesRefreshKey] = useState(0);
 
     // ============ CONVEX DATA HOOKS ============
     const {
         activePlans,
-        draftPlans,
         isLoading,
         isRefreshing,
+        hasError,
+        errorMessage,
         activePlansCount,
-        draftPlansCount,
         refetch,
     } = useDoctorPlans();
-    const { deleteDraft } = useDoctorPlansMutations();
 
 
 
-    const handleViewPlanDetails = (plan: any) => {
-        setSelectedPlan(plan);
-        setShowClientProgress(true);
+    const handleViewPlanDetails = (plan: DoctorPlanItem) => {
+        router.push({
+            pathname: '/doctor/client-profile',
+            params: {
+                clientId: plan.clientId,
+                clientName: plan.clientName,
+                clientAvatar: plan.avatar || '',
+                planId: plan.id,
+                dietProgram: plan.dietProgram,
+                clientGoal: plan.clientGoal,
+                weekNumber: plan.weekNumber.toString(),
+                totalWeeks: (plan.totalWeeks || 4).toString(),
+                startDate: plan.startDate,
+                endDate: plan.endDate || '',
+                completionRate: (plan.completionRate || 0).toString(),
+                streakDays: (plan.streakDays || 0).toString(),
+                viewProgress: 'true'
+            }
+        });
     };
 
     const handleCreateCategory = (category: {
@@ -263,71 +267,26 @@ export default function PlansScreen() {
 
     const renderEmptyState = () => (
         <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>{activeTab === 'active' ? '📋' : '📝'}</Text>
-            <Text style={styles.emptyTitle}>{activeTab === 'active' ? t.noActivePlans : t.noDrafts}</Text>
+            <Text style={styles.emptyEmoji}>📋</Text>
+            <Text style={styles.emptyTitle}>{t.noActivePlans}</Text>
             <Text style={styles.emptyText}>{t.assignDietPrograms}</Text>
-            {activeTab === 'active' && (
-                <TouchableOpacity style={styles.browseButton} onPress={() => { setActiveTab('programs'); }}>
-                    <Text style={styles.browseButtonText}>{t.browsePrograms}</Text>
-                </TouchableOpacity>
-            )}
+            <TouchableOpacity style={styles.browseButton} onPress={() => { setActiveTab('programs'); }}>
+                <Text style={styles.browseButtonText}>{t.browsePrograms}</Text>
+            </TouchableOpacity>
         </View>
     );
 
-    const renderDraftCard = (draft: DraftPlanItem) => (
-        <View key={draft.id} style={styles.draftCard}>
-            {/* Title */}
-            <Text style={[styles.draftTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-                {draft.title}
-            </Text>
-
-            {/* Details */}
-            <View style={styles.draftDetails}>
-                <Text style={[styles.draftBasedOn, { textAlign: isRTL ? 'right' : 'left' }]}>
-                    {t.basedOn}: {draft.basedOn}
-                </Text>
-                <Text style={[styles.draftLastEdited, { textAlign: isRTL ? 'right' : 'left' }]}>
-                    {t.lastEdited}: {draft.lastEditedHours} {t.hoursAgo}
-                </Text>
-            </View>
-
-            {/* Progress */}
-            <View style={styles.draftProgressSection}>
-                <View style={[styles.draftProgressHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                    <Text style={styles.draftProgressLabel}>{t.progress}</Text>
-                    <Text style={styles.draftProgressPercent}>{draft.progressPercent}% {t.complete}</Text>
-                </View>
-                <View style={styles.draftProgressBar}>
-                    <LinearGradient
-                        colors={gradients.primary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.draftProgressFill, { width: `${draft.progressPercent}%` }]}
-                    />
-                </View>
-            </View>
-
-            {/* Action Buttons */}
-            <View style={[styles.draftActions, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => deleteDraft(draft.id)}
-                >
-                    <Text style={styles.deleteButtonText}>{t.delete}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.continueButtonWrapper} activeOpacity={0.9}>
-                    <LinearGradient
-                        colors={gradients.primary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.continueButton}
-                    >
-                        <Text style={styles.continueButtonText}>{t.continueEditing}</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
-            </View>
+    const renderErrorState = () => (
+        <View style={styles.errorState}>
+            <Text style={styles.errorEmoji}>⚠️</Text>
+            <Text style={styles.errorTitle}>Connection Error</Text>
+            <Text style={styles.errorText}>{errorMessage || 'Unable to load plans. Please check your internet connection.'}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
         </View>
     );
+
 
     const renderTab = (tab: TabType, label: string, count?: number) => {
         const isActive = activeTab === tab;
@@ -373,7 +332,6 @@ export default function PlansScreen() {
             <View style={styles.tabsContainer}>
                 <View style={[styles.tabsRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                     {renderTab('programs', t.dietPrograms)}
-                    {renderTab('drafts', t.drafts, draftPlansCount)}
                     {renderTab('active', t.activePlans, activePlansCount)}
 
                 </View>
@@ -394,7 +352,7 @@ export default function PlansScreen() {
                                 // For programs tab, only increment key to trigger refetch
                                 setCategoriesRefreshKey(prev => prev + 1);
                             } else {
-                                // For active and drafts tabs, call refetch
+                                // For active tab, call refetch
                                 refetch();
                             }
                         }}
@@ -407,18 +365,21 @@ export default function PlansScreen() {
                     <>
                         {/* Section Header */}
                         <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <Text style={styles.sectionTitle}>{t.activeClientPlans}</Text>
                             <TouchableOpacity disabled style={[styles.categoryButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                                 <Text style={styles.categoryButtonText}>{t.allCategories}</Text>
                             </TouchableOpacity>
-                            <Text style={styles.sectionTitle}>{t.activeClientPlans}</Text>
+
                         </View>
 
-                        {/* Loading / Plans List */}
+                        {/* Loading / Error / Plans List */}
                         {isLoading ? (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={colors.primaryDark} />
                                 <Text style={styles.loadingText}>{loadingText}</Text>
                             </View>
+                        ) : hasError ? (
+                            renderErrorState()
                         ) : (activePlans && activePlans.length > 0) ? (
                             <View style={styles.plansList}>
                                 {activePlans.map(renderActivePlanCard)}
@@ -427,31 +388,6 @@ export default function PlansScreen() {
                     </>
                 )}
 
-                {activeTab === 'drafts' && (
-                    <>
-                        {/* Section Header */}
-                        <View style={styles.draftSectionHeader}>
-                            <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-                                {t.draftPlans}
-                            </Text>
-                            <Text style={[styles.draftSectionDescription, { textAlign: isRTL ? 'right' : 'left' }]}>
-                                {t.draftDescription}
-                            </Text>
-                        </View>
-
-                        {/* Draft Plans List */}
-                        {isLoading ? (
-                            <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color={colors.primaryDark} />
-                                <Text style={styles.loadingText}>{loadingText}</Text>
-                            </View>
-                        ) : (draftPlans && draftPlans.length > 0) ? (
-                            <View style={styles.plansList}>
-                                {draftPlans.map(renderDraftCard)}
-                            </View>
-                        ) : renderEmptyState()}
-                    </>
-                )}
 
                 {activeTab === 'programs' && (
                     <DietCategoriesGrid
@@ -473,17 +409,6 @@ export default function PlansScreen() {
                 }}
             />
 
-            {/* Client Progress View Full Screen */}
-            {showClientProgress && selectedPlan && (
-                <View style={styles.fullScreenOverlay}>
-                    <ClientProgressView
-                        clientId={selectedPlan.clientId}
-                        clientName={selectedPlan.clientName}
-                        clientAvatar={selectedPlan.avatar ?? undefined}
-                        onBack={() => setShowClientProgress(false)}
-                    />
-                </View>
-            )}
         </SafeAreaView>
     );
 }
@@ -547,9 +472,9 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: verticalScale(3),
-        borderTopLeftRadius: horizontalScale(3),
-        borderTopRightRadius: horizontalScale(3),
+        height: verticalScale(4),
+        borderTopLeftRadius: horizontalScale(4),
+        borderTopRightRadius: horizontalScale(4),
     },
     // Content
     content: {
@@ -731,6 +656,11 @@ const styles = StyleSheet.create({
         borderRadius: horizontalScale(16),
         padding: horizontalScale(32),
         alignItems: 'center',
+        minHeight: verticalScale(200),
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: colors.border,
+        borderStyle: 'dashed',
     },
     emptyEmoji: {
         fontSize: ScaleFontSize(48),
@@ -768,105 +698,6 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '500',
     },
-    // Draft Card Styles
-    draftSectionHeader: {
-        marginBottom: verticalScale(16),
-    },
-    draftSectionDescription: {
-        fontSize: ScaleFontSize(12),
-        color: colors.textSecondary,
-        marginTop: verticalScale(4),
-    },
-    draftCard: {
-        backgroundColor: colors.bgPrimary,
-        borderRadius: horizontalScale(12),
-        padding: horizontalScale(16),
-        borderWidth: 2,
-        borderStyle: 'dashed',
-        borderColor: '#AAB8C5',
-    },
-    draftTitle: {
-        fontSize: ScaleFontSize(16),
-        fontWeight: '600',
-        color: colors.textPrimary,
-        marginBottom: verticalScale(4),
-    },
-    draftDetails: {
-        marginBottom: verticalScale(20),
-    },
-    draftBasedOn: {
-        fontSize: ScaleFontSize(14),
-        color: colors.textSecondary,
-    },
-    draftLastEdited: {
-        fontSize: ScaleFontSize(12),
-        color: colors.textSecondary,
-        marginTop: verticalScale(4),
-    },
-    draftProgressSection: {
-        marginBottom: verticalScale(20),
-    },
-    draftProgressHeader: {
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: verticalScale(6),
-    },
-    draftProgressLabel: {
-        fontSize: ScaleFontSize(12),
-        fontWeight: '500',
-        color: colors.textSecondary,
-    },
-    draftProgressPercent: {
-        fontSize: ScaleFontSize(12),
-        fontWeight: '600',
-        color: colors.primaryDark,
-    },
-    draftProgressBar: {
-        height: verticalScale(8),
-        backgroundColor: '#E1E6EF',
-        borderRadius: horizontalScale(4),
-        overflow: 'hidden',
-        transform: [{ scaleX: -1 }]
-    },
-    draftProgressFill: {
-        height: '100%',
-        borderRadius: horizontalScale(4),
-    },
-    draftActions: {
-        gap: horizontalScale(12),
-    },
-    deleteButton: {
-        flex: 1,
-        height: verticalScale(40),
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: horizontalScale(8),
-    },
-    deleteButtonText: {
-        fontSize: ScaleFontSize(14),
-        fontWeight: '600',
-        color: '#EB5757',
-    },
-    continueButtonWrapper: {
-        flex: 2,
-        borderRadius: horizontalScale(8),
-        overflow: 'hidden',
-        shadowColor: '#5073FE',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        elevation: 4,
-    },
-    continueButton: {
-        height: verticalScale(40),
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    continueButtonText: {
-        fontSize: ScaleFontSize(14),
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
     // Loading state
     loadingContainer: {
         backgroundColor: colors.bgPrimary,
@@ -880,5 +711,43 @@ const styles = StyleSheet.create({
         fontSize: ScaleFontSize(14),
         color: colors.textSecondary,
         marginTop: verticalScale(12),
+    },
+    // Error state
+    errorState: {
+        backgroundColor: colors.bgPrimary,
+        borderRadius: horizontalScale(16),
+        padding: horizontalScale(32),
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: verticalScale(200),
+    },
+    errorEmoji: {
+        fontSize: ScaleFontSize(48),
+        marginBottom: verticalScale(16),
+    },
+    errorTitle: {
+        fontSize: ScaleFontSize(18),
+        fontWeight: '600',
+        color: colors.textPrimary,
+        marginBottom: verticalScale(8),
+        textAlign: 'center',
+    },
+    errorText: {
+        fontSize: ScaleFontSize(14),
+        color: colors.textSecondary,
+        textAlign: 'center',
+        marginBottom: verticalScale(20),
+        paddingHorizontal: horizontalScale(16),
+    },
+    retryButton: {
+        backgroundColor: colors.primaryDark,
+        paddingHorizontal: horizontalScale(24),
+        paddingVertical: verticalScale(12),
+        borderRadius: horizontalScale(8),
+    },
+    retryButtonText: {
+        fontSize: ScaleFontSize(14),
+        color: '#FFFFFF',
+        fontWeight: '500',
     },
 });

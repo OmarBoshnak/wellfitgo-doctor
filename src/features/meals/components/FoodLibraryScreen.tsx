@@ -313,8 +313,8 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
 
     // Back arrow based on RTL
     const BackArrow = () => isRTL
-        ? <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />
-        : <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />;
+        ? <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />
+        : <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />;
 
     // Determine loading state
     const isEmpty = !isLoading && allFoods.length === 0;
@@ -330,10 +330,6 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: insets.top }]}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <BackArrow />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>{t.addFood}</Text>
                 <TouchableOpacity onPress={handleDone} activeOpacity={0.9}>
                     <LinearGradient
                         colors={gradients.primary}
@@ -345,6 +341,12 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
                             {t.done} ({selectedFoods.size})
                         </Text>
                     </LinearGradient>
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>{t.addFood}</Text>
+
+
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <BackArrow />
                 </TouchableOpacity>
 
             </View>
@@ -487,13 +489,14 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
                     <View style={styles.modalContainer}>
                         {/* Modal Header */}
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{t.createCustomFood}</Text>
                             <TouchableOpacity
                                 onPress={() => setShowCreateModal(false)}
                                 style={styles.modalCloseButton}
                             >
                                 <X size={horizontalScale(20)} color={colors.textSecondary} />
                             </TouchableOpacity>
+                            <Text style={styles.modalTitle}>{t.createCustomFood}</Text>
+
                         </View>
 
                         {/* Input Fields */}
@@ -516,7 +519,7 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.categoryScrollContent}
                             >
-                                {FILTER_TABS.filter(tab => tab.id !== 'all').map(tab => (
+                                {(isRTL ? [...FILTER_TABS].reverse() : FILTER_TABS).filter(tab => tab.id !== 'all').map(tab => (
                                     <TouchableOpacity
                                         key={tab.id}
                                         onPress={() => setNewFoodCategory(tab.id)}
@@ -556,13 +559,6 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
 
                         {/* Modal Actions */}
                         <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={styles.modalCancelButton}
-                                onPress={() => setShowCreateModal(false)}
-                                disabled={isCreating}
-                            >
-                                <Text style={styles.modalCancelText}>{t.cancel}</Text>
-                            </TouchableOpacity>
                             <TouchableOpacity onPress={handleCreateCustomFood} disabled={isCreating}>
                                 <LinearGradient
                                     colors={gradients.primary}
@@ -579,6 +575,14 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
                                         </>
                                     )}
                                 </LinearGradient>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.modalCancelButton}
+                                onPress={() => setShowCreateModal(false)}
+                                disabled={isCreating}
+                            >
+                                <Text style={styles.modalCancelText}>{t.cancel}</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -859,7 +863,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: colors.textSecondary,
         marginBottom: verticalScale(6),
-        textAlign: 'left',
+        textAlign: 'right',
     },
     modalInput: {
         height: verticalScale(44),

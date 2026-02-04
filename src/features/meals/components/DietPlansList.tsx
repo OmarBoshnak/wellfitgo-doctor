@@ -1,14 +1,15 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, ArrowRight, Search, Users, Utensils, Trash2, Plus } from 'lucide-react-native';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
-import { useDietsByType, type DietPlan, type DietType } from '../hooks/useDietsByType';
+import { useDietsByType, type DietPlan, type DietFilter } from '../hooks/useDietsByType';
 import { usePlanMutations } from '../hooks/usePlanMutations';
 import { isRTL } from '@/src/core/constants/translation';
 import { colors, gradients } from '@/src/core/constants/Theme';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 // ============ TRANSLATIONS ============
 const t = {
@@ -48,10 +49,30 @@ interface Props {
 
 // ============ COMPONENT ============
 export default function DietPlansList({ category, onBack, onAssign, onView, onEdit, onCreateNew }: Props) {
-    // Fetch diet plans for this category type
-    const { diets, isLoading } = useDietsByType(category.id as DietType);
+    // Fetch diet plans for this category filter (could be type or categoryId)
+    console.log('[DietPlansList] Category received:', JSON.stringify(category, null, 2));
+    console.log('[DietPlansList] Category ID:', category.id);
+    console.log('[DietPlansList] Category ID type:', typeof category.id);
+
+    const { diets, isLoading, refetch } = useDietsByType(category.id as DietFilter);
     const { deleteDietPlan } = usePlanMutations();
     const insets = useSafeAreaInsets();
+
+    // ============ REFRESH STATE ============
+    const [refreshing, setRefreshing] = useState(false);
+
+    // ============ REFRESH HANDLER ============
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await refetch();
+            console.log('[DietPlansList] Data refreshed successfully');
+        } catch (error) {
+            console.error('[DietPlansList] Refresh failed:', error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [refetch]);
 
     // ============ DELETE HANDLER ============
     const handleDelete = (diet: DietPlan) => {
@@ -70,6 +91,8 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
                                 isRTL ? 'تم الحذف' : 'Deleted',
                                 t.deleteSuccess
                             );
+                            // Refresh data after successful deletion
+                            await refetch();
                         } catch (error) {
                             console.error('Delete failed:', error);
                             Alert.alert(
@@ -85,15 +108,14 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
 
     // ============ RENDER HELPERS ============
     const BackArrow = () => isRTL
-        ? <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />
-        : <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />;
+        ? <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />
+        : <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />;
 
     const renderHeader = () => (
         <View style={[styles.header, { paddingTop: insets.top }]}>
             <View style={[styles.headerRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <BackArrow />
-                </TouchableOpacity>
+                                <View style={{ marginHorizontal: horizontalScale(16) }} />
+
                 <View style={styles.headerCenter}>
                     <Text style={styles.headerTitle}>
                         {category.name} {t.diets}
@@ -102,7 +124,9 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
                         {category.nameAr}
                     </Text>
                 </View>
-                <View style={{ marginHorizontal: horizontalScale(16) }} />
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <BackArrow />
+                </TouchableOpacity>
 
             </View>
         </View>
@@ -131,7 +155,7 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
             )}
             <View style={[styles.bannerContent, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                 <Text style={[styles.bannerText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                    {category.description || t.chooseDiet}
+                    أضف نظام غذائي جديد
                 </Text>
                 <Text style={styles.bannerEmoji}>{category.emoji || '🥗'}</Text>
             </View>
@@ -154,17 +178,10 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
     );
 
     const renderDietCard = (diet: DietPlan) => (
-        
+
         <View key={diet.id} style={styles.dietCard}>
             {/* Header with Emoji and Name */}
             <View style={[styles.dietHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                <Text style={styles.dietEmoji}>{diet.emoji}</Text>
-                <View style={[styles.dietTitleContainer, { alignItems: isRTL ? 'flex-start' : 'flex-end' }]}>
-                    <Text style={styles.dietName}>{diet.name}</Text>
-                    {diet.nameAr && (
-                        <Text style={styles.dietNameAr}>{diet.nameAr}</Text>
-                    )}
-                </View>
                 <TouchableOpacity
                     style={styles.deleteButton}
                     onPress={() => handleDelete(diet)}
@@ -172,6 +189,13 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
                 >
                     <Trash2 size={horizontalScale(16)} color="#EF4444" />
                 </TouchableOpacity>
+                <View style={[styles.dietTitleContainer, { alignItems: isRTL ? 'flex-end' : 'flex-start' }]}>
+                    <Text style={styles.dietName}>{diet.name}</Text>
+                    {diet.nameAr && (
+                        <Text style={styles.dietNameAr}>{diet.nameAr}</Text>
+                    )}
+                </View>
+                <Text style={styles.dietEmoji}>{diet.emoji}</Text>
 
             </View>
 
@@ -190,13 +214,13 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
             )}
 
             {/* Meta: Meals count */}
-            <View style={[styles.metaRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.metaRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Utensils size={horizontalScale(14)} color={colors.textSecondary} />
                 <Text style={styles.metaText}>{diet.mealsCount} {t.meals}</Text>
             </View>
 
             {/* Usage Stats */}
-            <View style={[styles.usageRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+            <View style={[styles.usageRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Users size={horizontalScale(14)} color={colors.textSecondary} />
                 <Text style={styles.usageText}>
                     {t.usedWith} {diet.usageCount} {t.clients}
@@ -205,6 +229,21 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
 
             {/* Action Buttons */}
             <View style={[styles.buttonRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => onEdit(diet)}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.editButtonText}>{t.edit}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.viewButton}
+                    onPress={() => onView(diet)}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.viewButtonText}>{t.viewDetails}</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.assignButtonWrapper}
                     onPress={() => onAssign(diet)}
@@ -219,43 +258,51 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
                         <Text style={styles.assignButtonText}>{t.assignToClient}</Text>
                     </LinearGradient>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.viewButton}
-                    onPress={() => onView(diet)}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.viewButtonText}>{t.viewDetails}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => onEdit(diet)}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.editButtonText}>{t.edit}</Text>
-                </TouchableOpacity>
             </View>
         </View>
     );
 
     return (
-        <SafeAreaView edges={['right','left']} style={styles.container}>
+        <SafeAreaView edges={['right', 'left']} style={styles.container}>
             {renderHeader()}
-            {renderBanner()}
+            <Animated.ScrollView
+                entering={FadeIn.duration(400)}
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={colors.primaryDark}
+                        colors={[colors.primaryDark]}
+                    />
+                }
+            >
 
-            {/* Section Title */}
-            <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-                {t.chooseDiet}
-            </Text>
+                {renderBanner()}
 
-            {/* Diet Cards */}
-            {/* Diet Cards */}
-            {diets && diets.length > 0 ? (
-                <View style={styles.cardsList}>
-                    {diets.map(renderDietCard)}
-                </View>
-            ) : (
-                renderEmptyState()
-            )}
+                {/* Section Title */}
+                <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                    {t.chooseDiet}
+                </Text>
+
+                {/* Diet Cards */}
+                {(() => {
+                    console.log('[DietPlansList] Rendering diets:', diets?.length || 0, 'isLoading:', isLoading);
+                    return null;
+                })()}
+                {diets && diets.length > 0 ? (
+                    <View style={styles.cardsList}>
+                        {diets.map((diet, index) => {
+                            console.log(`[DietPlansList] Diet ${index}:`, JSON.stringify(diet, null, 2));
+                            return renderDietCard(diet);
+                        })}
+                    </View>
+                ) : (
+                    renderEmptyState()
+                )}
+            </Animated.ScrollView>
         </SafeAreaView>
     );
 }
@@ -264,7 +311,14 @@ export default function DietPlansList({ category, onBack, onAssign, onView, onEd
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingHorizontal:horizontalScale(10)
+        paddingHorizontal: horizontalScale(10)
+    },
+    // ScrollView
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: verticalScale(20),
     },
     // Header
     header: {

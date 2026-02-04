@@ -13,6 +13,7 @@ const t = {
     voiceMessage: 'رسالة صوتية',
     edited: 'تم التعديل',
     deleted: 'تم حذف هذه الرسالة',
+    replyTo: 'رد على',
 };
 
 interface Props {
@@ -68,24 +69,44 @@ const MessageBubble = React.memo(function MessageBubble({ message, showAvatar, a
     // Deleted message placeholder
     if (isDeleted) {
         return (
-            <View style={[styles.container, isMe ? styles.containerMe : styles.containerClient]}>
-                {!isMe && (
-                    <View style={styles.avatarContainer}>
-                        <View style={styles.avatarPlaceholder} />
+            <TouchableOpacity
+                onLongPress={handleLongPress}
+                delayLongPress={300}
+                activeOpacity={0.9}
+            >
+                <View style={[styles.container, isMe ? styles.containerMe : styles.containerClient]}>
+                    <View style={[styles.bubbleWrapper, isMe ? styles.bubbleWrapperMe : styles.bubbleWrapperClient]}>
+                        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleDeleted]}>
+                            <MaterialIcons name="block" size={16} color="#9CA3AF" style={styles.deletedIcon} />
+                            <Text style={[styles.textDeleted, { textAlign: isMe ? 'right' : 'left' }]}>{t.deleted}</Text>
+                        </View>
+                        <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowClient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                            <Text style={styles.timestamp}>{message.timestamp}</Text>
+                        </View>
                     </View>
-                )}
-                <View style={[styles.bubbleWrapper, isMe ? styles.bubbleWrapperMe : styles.bubbleWrapperClient]}>
-                    <View style={[styles.bubble, styles.bubbleDeleted]}>
-                        <MaterialIcons name="block" size={16} color="#9CA3AF" style={styles.deletedIcon} />
-                        <Text style={styles.textDeleted}>{t.deleted}</Text>
-                    </View>
-                    <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowClient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                        <Text style={styles.timestamp}>{message.timestamp}</Text>
-                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    }
+
+    // Reply indicator component
+    const ReplyIndicator = ({ replyTo }: { replyTo: ChatMessage['replyTo'] }) => {
+        if (!replyTo) return null;
+        
+        return (
+            <View style={[styles.replyContainer, isMe ? styles.replyContainerMe : styles.replyContainerClient]}>
+                <View style={[styles.replyBar, isMe ? styles.replyBarMe : styles.replyBarClient]} />
+                <View style={styles.replyContent}>
+                    <Text style={styles.replyLabel}>
+                        {t.replyTo} {replyTo.sender === 'me' ? 'نفسك' : 'المريض'}
+                    </Text>
+                    <Text style={styles.replyText} numberOfLines={1}>
+                        {replyTo.content}
+                    </Text>
                 </View>
             </View>
         );
-    }
+    };
 
     // Regular text message bubble
     return (
@@ -95,46 +116,38 @@ const MessageBubble = React.memo(function MessageBubble({ message, showAvatar, a
             activeOpacity={0.9}
         >
             <View style={[styles.container, isMe ? styles.containerMe : styles.containerClient]}>
-                {/* Avatar placeholder for alignment (client messages) */}
-                {!isMe && (
-                    <View style={styles.avatarContainer}>
-                        {showAvatar && avatarUri ? (
-                            <View style={[styles.avatar, { backgroundImage: `url(${avatarUri})` }]} />
-                        ) : (
-                            <View style={styles.avatarPlaceholder} />
-                        )}
-                    </View>
-                )}
-
                 <View style={[styles.bubbleWrapper, isMe ? styles.bubbleWrapperMe : styles.bubbleWrapperClient]}>
+                    {/* Reply Indicator */}
+                    <ReplyIndicator replyTo={message.replyTo} />
+                    
                     {/* Bubble */}
                     {isMe ? (
+                        <View style={[styles.bubble, styles.bubbleMe]}>
+                            <Text style={styles.textMe}>{message.content}</Text>
+                        </View>
+                    ) : (
                         <LinearGradient
                             colors={['#5073FE', '#02C3CD']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
-                            style={[styles.bubble, styles.bubbleMe]}
+                            style={[styles.bubble, styles.bubbleClient]}
                         >
-                            <Text style={styles.textMe}>{message.content}</Text>
-                        </LinearGradient>
-                    ) : (
-                        <View style={[styles.bubble, styles.bubbleClient]}>
                             <Text style={styles.textClient}>{message.content}</Text>
-                        </View>
+                        </LinearGradient>
                     )}
 
                     {/* Timestamp, read status, and edited label */}
                     <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowClient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                        {isEdited && (
-                            <Text style={styles.editedLabel}>{t.edited}</Text>
-                        )}
-                        <Text style={styles.timestamp}>{message.timestamp}</Text>
                         {isMe && message.status === 'read' && (
                             <MaterialIcons name="done-all" size={16} color={colors.primaryDark} />
                         )}
-                        {isMe && message.status === 'sent' && (
+{isEdited && (
+                            <Text style={styles.editedLabel}>{t.edited}</Text>
+                        )}        
+                                        {isMe && message.status === 'sent' && (
                             <MaterialIcons name="done" size={16} color="#AAB8C5" />
                         )}
+                        <Text style={styles.timestamp}>{message.timestamp}</Text>
                     </View>
                 </View>
             </View>
@@ -152,34 +165,20 @@ const styles = StyleSheet.create({
     },
     containerMe: {
         flexDirection: 'row-reverse', // RTL for my messages
-        justifyContent: 'flex-end',
-    },
-    containerClient: {
-        flexDirection: 'row-reverse', // RTL for client messages too
         justifyContent: 'flex-start',
     },
-    avatarContainer: {
-        width: horizontalScale(4),
-    },
-    avatar: {
-        width: horizontalScale(28),
-        height: horizontalScale(28),
-        borderRadius: horizontalScale(14),
-        backgroundColor: colors.bgSecondary,
-    },
-    avatarPlaceholder: {
-        width: horizontalScale(28),
-        height: horizontalScale(28),
-        opacity: 0,
+    containerClient: {
+        flexDirection: 'row', // LTR for client messages (left alignment)
+        justifyContent: 'flex-start',
     },
     bubbleWrapper: {
         maxWidth: '75%',
     },
     bubbleWrapperMe: {
-        alignItems: 'flex-start', // RTL: my messages align right
+        alignItems: 'flex-end', // My messages align right
     },
     bubbleWrapperClient: {
-        alignItems: 'flex-end', // RTL: client messages align left
+        alignItems: 'flex-start', // LTR: client messages align left
     },
     bubble: {
         padding: horizontalScale(12),
@@ -187,6 +186,9 @@ const styles = StyleSheet.create({
     },
     bubbleMe: {
         borderBottomRightRadius: horizontalScale(4), // RTL: tail on left
+        backgroundColor: colors.white,
+        borderWidth: 1,
+        borderColor: colors.primaryDark,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -194,27 +196,24 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     bubbleClient: {
-        backgroundColor: colors.bgPrimary,
-        borderBottomRightRadius: horizontalScale(4), // RTL: tail on right
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderBottomLeftRadius: horizontalScale(4), // LTR: tail on left
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
     },
     textMe: {
         fontSize: ScaleFontSize(14),
         lineHeight: ScaleFontSize(20),
-        color: '#FFFFFF',
+        color: colors.primaryDark,
         textAlign: 'right',
     },
     textClient: {
         fontSize: ScaleFontSize(14),
         lineHeight: ScaleFontSize(20),
-        color: colors.textSecondary,
-        textAlign: 'right',
+        color: '#FFFFFF',
+        textAlign: 'left',
     },
     metaRow: {
         alignItems: 'center',
@@ -226,7 +225,7 @@ const styles = StyleSheet.create({
         marginLeft: horizontalScale(4),
     },
     metaRowClient: {
-        justifyContent: 'flex-end', // RTL
+        justifyContent: 'flex-start', // LTR
         marginRight: horizontalScale(4),
     },
     timestamp: {
@@ -277,5 +276,54 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         color: '#9CA3AF',
         marginRight: horizontalScale(4),
+    },
+    // Reply indicator styles
+    replyContainer: {
+        flexDirection: 'row-reverse',
+        alignItems: 'center',
+        marginBottom: verticalScale(6),
+        maxWidth: '100%',
+    },
+    replyContainerMe: {
+        justifyContent: 'flex-end',
+    },
+    replyContainerClient: {
+        justifyContent: 'flex-start',
+    },
+    replyBar: {
+        width: horizontalScale(2),
+        height: verticalScale(20),
+        borderRadius: horizontalScale(1),
+        marginRight: horizontalScale(6),
+        flexShrink: 0,
+    },
+    replyBarMe: {
+        backgroundColor: colors.primaryDark,
+    },
+    replyBarClient: {
+        backgroundColor: '#5073FE',
+    },
+    replyContent: {
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        paddingVertical: verticalScale(4),
+        paddingHorizontal: horizontalScale(8),
+        borderRadius: horizontalScale(8),
+        borderLeftWidth: 2,
+        borderLeftColor: colors.border,
+        flexShrink: 1,
+        minWidth: 0, // Allow text to wrap properly
+    },
+    replyLabel: {
+        fontSize: ScaleFontSize(10),
+        fontWeight: '600',
+        color: colors.primaryDark,
+        marginBottom: verticalScale(2),
+        textAlign: 'right',
+    },
+    replyText: {
+        fontSize: ScaleFontSize(11),
+        color: colors.textSecondary,
+        textAlign: 'right',
+        lineHeight: ScaleFontSize(14),
     },
 });

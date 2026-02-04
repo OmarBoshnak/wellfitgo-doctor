@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import * as Haptics from 'expo-haptics';
 import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '@/src/core/constants/Theme';
 
 import { Audio } from 'expo-av';
@@ -242,7 +243,14 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
                         } else {
                             console.log('[VoiceMessage] Downloading to:', localPath);
                             try {
-                                const downloadResult = await FileSystem.downloadAsync(audioUrl, localPath);
+                                const downloadResult = await FileSystem.downloadAsync(audioUrl, localPath, {
+                                    headers: {
+                                        // Add authentication if needed for backend URLs
+                                        ...(audioUrl.includes('wellfitgo-backend') ? {
+                                            'Authorization': `Bearer ${await AsyncStorage.getItem('token')}`,
+                                        } : {}),
+                                    },
+                                });
                                 console.log('[VoiceMessage] Download complete, status:', downloadResult.status);
 
                                 if (downloadResult.status !== 200) {
@@ -374,8 +382,8 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
             {waveform.map((amplitude, index) => {
                 const isPlayed = index < playedBars;
                 const barColor = isMine
-                    ? isPlayed ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'
-                    : isPlayed ? colors.primaryDark : '#D1D5DB';
+                    ? isPlayed ? colors.primaryDark : '#D1D5DB'
+                    : isPlayed ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)';
 
                 return (
                     <Animated.View
@@ -396,50 +404,11 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
     return (
         <View style={[styles.container, isMine ? styles.containerMine : styles.containerClient]}>
             {isMine ? (
-                <LinearGradient
-                    colors={['#5073FE', '#02C3CD']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.bubble, styles.bubbleMine]}
-                >
-                    <View style={styles.content}>
+                <View style={[styles.bubble, styles.bubbleMine]}>
+                    <View style={[styles.content, { flexDirection: 'row-reverse' }]}>
                         {/* Play/Pause Button */}
                         <TouchableOpacity
                             style={styles.playButton}
-                            onPress={handlePlayPause}
-                            disabled={isLoading}
-                            activeOpacity={0.7}
-                        >
-                            <MaterialIcons
-                                name={isLoading ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
-                                size={26}
-                                color="#FFFFFF"
-                            />
-                        </TouchableOpacity>
-
-                        {/* Waveform */}
-                        <View style={styles.waveformWrapper}>
-                            {renderWaveform()}
-                        </View>
-
-                        {/* Time & Speed Control */}
-                        <View style={styles.rightControls}>
-                            <TouchableOpacity
-                                style={styles.speedButton}
-                                onPress={handleSpeedChange}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.speedTextMine}>{playbackSpeed}x</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </LinearGradient>
-            ) : (
-                <View style={[styles.bubble, styles.bubbleClient]}>
-                    <View style={styles.content}>
-                        {/* Play/Pause Button */}
-                        <TouchableOpacity
-                            style={[styles.playButton, styles.playButtonClient]}
                             onPress={handlePlayPause}
                             disabled={isLoading}
                             activeOpacity={0.7}
@@ -459,7 +428,7 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
                         {/* Time & Speed Control */}
                         <View style={styles.rightControls}>
                             <TouchableOpacity
-                                style={[styles.speedButton, styles.speedButtonClient]}
+                                style={styles.speedButton}
                                 onPress={handleSpeedChange}
                                 activeOpacity={0.7}
                             >
@@ -468,14 +437,53 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
                         </View>
                     </View>
                 </View>
+            ) : (
+                <LinearGradient
+                    colors={['#5073FE', '#02C3CD']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.bubble, styles.bubbleClient]}
+                >
+                    <View style={[styles.content, { flexDirection: 'row' }]}>
+                        {/* Play/Pause Button */}
+                        <TouchableOpacity
+                            style={[styles.playButton, styles.playButtonClient]}
+                            onPress={handlePlayPause}
+                            disabled={isLoading}
+                            activeOpacity={0.7}
+                        >
+                            <MaterialIcons
+                                name={isLoading ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
+                                size={26}
+                                color="#FFFFFF"
+                            />
+                        </TouchableOpacity>
+
+                        {/* Waveform */}
+                        <View style={styles.waveformWrapper}>
+                            {renderWaveform()}
+                        </View>
+
+                        {/* Time & Speed Control */}
+                        <View style={styles.rightControls}>
+                            <TouchableOpacity
+                                style={[styles.speedButton, styles.speedButtonClient]}
+                                onPress={handleSpeedChange}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.speedTextMine}>{playbackSpeed}x</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </LinearGradient>
             )}
 
             {/* Timestamp */}
-            <View style={[styles.metaRow, isMine ? styles.metaRowMine : styles.metaRowClient]}>
-                <Text style={styles.timestamp}>{timestamp}</Text>
+            <View style={[styles.metaRow, isMine ? styles.metaRowMine : styles.metaRowClient, { flexDirection: isMine ? 'row-reverse' : 'row' }]}>
                 {isMine && (
                     <MaterialIcons name="done-all" size={14} color={colors.primaryDark} />
                 )}
+                <Text style={styles.timestamp}>{timestamp}</Text>
             </View>
         </View>
     );
@@ -487,10 +495,10 @@ const styles = StyleSheet.create({
         marginVertical: verticalScale(4),
     },
     containerMine: {
-        alignItems: 'flex-start',
+        alignItems: 'flex-end', // Right alignment for my messages
     },
     containerClient: {
-        alignItems: 'flex-end',
+        alignItems: 'flex-start', // Left alignment for client messages
     },
     bubble: {
         borderRadius: horizontalScale(18),
@@ -500,13 +508,13 @@ const styles = StyleSheet.create({
         minWidth: horizontalScale(240),
     },
     bubbleMine: {
-        borderBottomRightRadius: horizontalScale(4),
+        borderBottomRightRadius: horizontalScale(4), // Tail on right
+        backgroundColor: colors.white,
+        borderWidth: 1,
+        borderColor: colors.primaryDark,
     },
     bubbleClient: {
-        backgroundColor: colors.bgPrimary,
-        borderBottomRightRadius: horizontalScale(4),
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderBottomLeftRadius: horizontalScale(4), // Tail on left
     },
     content: {
         flexDirection: 'row-reverse',
@@ -518,12 +526,12 @@ const styles = StyleSheet.create({
         width: horizontalScale(35),
         height: horizontalScale(35),
         borderRadius: horizontalScale(20),
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(80, 115, 254, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     playButtonClient: {
-        backgroundColor: 'rgba(80, 115, 254, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
     waveformWrapper: {
         flex: 1,
@@ -560,10 +568,10 @@ const styles = StyleSheet.create({
         paddingHorizontal: horizontalScale(8),
         paddingVertical: verticalScale(4),
         borderRadius: horizontalScale(10),
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: 'rgba(80, 115, 254, 0.1)',
     },
     speedButtonClient: {
-        backgroundColor: 'rgba(80, 115, 254, 0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
     speedTextMine: {
         fontSize: ScaleFontSize(11),
@@ -582,11 +590,11 @@ const styles = StyleSheet.create({
         marginTop: verticalScale(4),
     },
     metaRowMine: {
-        justifyContent: 'flex-start',
+        justifyContent: 'flex-end', // Right alignment for my messages
         marginLeft: horizontalScale(4),
     },
     metaRowClient: {
-        justifyContent: 'flex-end',
+        justifyContent: 'flex-start', // Left alignment for client messages
         marginRight: horizontalScale(4),
     },
     timestamp: {

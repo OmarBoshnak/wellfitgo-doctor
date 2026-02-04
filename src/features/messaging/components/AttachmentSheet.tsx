@@ -54,7 +54,6 @@ interface Props {
     visible: boolean;
     onClose: () => void;
     onAttachmentSelected: (result: AttachmentResult) => void;
-    onMealPlanPress: () => void;
 }
 
 interface AttachmentOption {
@@ -67,7 +66,7 @@ interface AttachmentOption {
     onPress: () => void;
 }
 
-export default function AttachmentSheet({ visible, onClose, onAttachmentSelected, onMealPlanPress }: Props) {
+export default function AttachmentSheet({ visible, onClose, onAttachmentSelected }: Props) {
     const insets = useSafeAreaInsets();
 
     const handlePhotoLibrary = useCallback(async () => {
@@ -79,7 +78,7 @@ export default function AttachmentSheet({ visible, onClose, onAttachmentSelected
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                console.log('Gallery permission denied');
+                Alert.alert('صلاحيات', 'يجب منح إذن الوصول إلى المعرض لاختيار الصور');
                 return;
             }
 
@@ -90,16 +89,20 @@ export default function AttachmentSheet({ visible, onClose, onAttachmentSelected
             });
 
             if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                console.log('Image selected:', { fileName: asset.fileName, mimeType: asset.mimeType });
+                
                 onAttachmentSelected({
                     type: 'image',
-                    uri: result.assets[0].uri,
-                    name: result.assets[0].fileName || 'image.jpg',
-                    mimeType: result.assets[0].mimeType,
+                    uri: asset.uri,
+                    name: asset.fileName || 'image.jpg',
+                    mimeType: asset.mimeType,
                 });
                 onClose();
             }
         } catch (error) {
-            console.log('Error picking image:', error);
+            console.error('Error picking image:', error);
+            Alert.alert('خطأ', 'فشل في اختيار الصورة. يرجى المحاولة مرة أخرى.');
         }
     }, [onAttachmentSelected, onClose]);
 
@@ -116,23 +119,22 @@ export default function AttachmentSheet({ visible, onClose, onAttachmentSelected
             });
 
             if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                console.log('Document selected:', { name: asset.name, mimeType: asset.mimeType, size: asset.size });
+                
                 onAttachmentSelected({
                     type: 'document',
-                    uri: result.assets[0].uri,
-                    name: result.assets[0].name,
-                    mimeType: result.assets[0].mimeType,
+                    uri: asset.uri,
+                    name: asset.name,
+                    mimeType: asset.mimeType,
                 });
                 onClose();
             }
         } catch (error) {
-            console.log('Error picking document:', error);
+            console.error('Error picking document:', error);
+            Alert.alert('خطأ', 'فشل في اختيار الملف. يرجى المحاولة مرة أخرى.');
         }
     }, [onAttachmentSelected, onClose]);
-
-    const handleMealPlan = useCallback(() => {
-        onClose();
-        setTimeout(() => onMealPlanPress(), 300);
-    }, [onClose, onMealPlanPress]);
 
     const options: AttachmentOption[] = [
         {
@@ -152,15 +154,6 @@ export default function AttachmentSheet({ visible, onClose, onAttachmentSelected
             title: t.document,
             description: t.documentDesc,
             onPress: handleDocument,
-        },
-        {
-            id: 'mealPlan',
-            icon: 'restaurant-menu',
-            iconColor: '#EA5757',
-            bgColor: 'rgba(234, 87, 87, 0.1)',
-            title: t.mealPlan,
-            description: t.mealPlanDesc,
-            onPress: handleMealPlan,
         },
     ];
 

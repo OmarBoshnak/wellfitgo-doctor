@@ -21,9 +21,10 @@ import { useRouter } from 'expo-router';
 import { ScaleFontSize, horizontalScale, verticalScale } from '@/src/core/utils/scaling';
 import { isRTL } from '@/src/core/constants/translation';
 import { colors, gradients, shadows } from '@/src/core/constants/Theme';
-import ProgressChart from '../meals/components/ProgressChart';
-import DayScroller from '../meals/components/DayScroller';
+import ProgressChart from '../../../meals/components/ProgressChart';
+import DayScroller from '../../../meals/components/DayScroller';
 import { plansService } from '@/src/shared/services';
+import type { ClientProgressDetails, DailyMealLog, ClientAnalytics } from '@/src/shared/services/plans.service';
 
 
 // Translations
@@ -90,7 +91,17 @@ interface ClientProgressViewProps {
     clientId: string;
     clientName: string;
     clientAvatar?: string;
-    onBack: () => void;
+    planId?: string;
+    dietProgram?: string;
+    clientGoal?: string;
+    weekNumber?: string;
+    totalWeeks?: string;
+    startDate?: string;
+    endDate?: string;
+    completionRate?: string;
+    streakDays?: string;
+    viewProgress?: string;
+    onBack?: () => void;
 }
 
 // Meal Checklist Item
@@ -148,93 +159,78 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
     clientId,
     clientName,
     clientAvatar,
+    planId,
+    dietProgram,
+    clientGoal,
+    weekNumber,
+    totalWeeks,
+    startDate,
+    endDate,
+    completionRate,
+    streakDays,
+    viewProgress,
     onBack,
 }) => {
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
+    // Debug: Log received props
+    console.log('ClientProgressView received props:', {
+        clientId,
+        clientName,
+        planId,
+        dietProgram,
+        viewProgress
+    });
+
     const [selectedDate, setSelectedDate] = useState<string>(() => {
         return new Date().toISOString().split('T')[0];
     });
 
-    // Local state for plan progress
-    const [planProgress, setPlanProgress] = useState<any>(undefined);
+    // Local state for enhanced progress data
+    const [progressDetails, setProgressDetails] = useState<ClientProgressDetails | null>(null);
+    const [analytics, setAnalytics] = useState<ClientAnalytics | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [retryCount, setRetryCount] = useState(0);
 
-    // Fetch client's progress from backend
+    // Fetch enhanced client progress from backend
     useEffect(() => {
-        const fetchProgress = async () => {
+        const fetchEnhancedProgress = async () => {
+            if (!planId) {
+                setIsLoading(false);
+                return;
+            }
+
             try {
-                // 1. Get client's active plan
-                const clients = await plansService.getClientsForAssignment();
-                const clientStatus = clients.find(c => c.id === clientId);
+                setIsLoading(true);
+                setError(null);
 
-                if (!clientStatus?.hasActivePlan) {
-                    setPlanProgress(null);
-                    return;
-                }
+                // Fetch detailed progress data
+                const [progressData, analyticsData] = await Promise.all([
+                    plansService.getClientProgressDetails(clientId, planId),
+                    plansService.getClientAnalytics(clientId, planId, 'month')
+                ]);
 
-                // 2. Fetch the plan details (We need the actual assigned plan ID or program ID)
-                // Since getClientsForAssignment only gives status, let's use getActivePlans to find the full record
-                const activePlans = await plansService.getActivePlans();
-                const userPlan = activePlans.find(p => p.clientId === clientId);
+                setProgressDetails(progressData);
+                setAnalytics(analyticsData);
 
-                if (!userPlan) {
-                    setPlanProgress(null);
-                    return;
-                }
-
-                // 3. For now, we simulate the detailed view based on the program name
-                // In a real app, we would fetch a specific 'MealLog' or 'DailyPlan' endpoint
-                // which I haven't implemented fully in the backend yet.
-                // So I will construct the view data from the userPlan summary.
-
-                // Mocking the daily meals structure for display purposes 
-                // until backend 'Daily Plan' endpoint is ready.
-                const mockDays = Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date();
-                    d.setDate(d.getDate() - d.getDay() + i); // Current week
-                    const isToday = i === new Date().getDay();
-                    return {
-                        date: d.toISOString().split('T')[0],
-                        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
-                        labelAr: d.toLocaleDateString('ar-EG', { weekday: 'short' }),
-                        isToday: isToday,
-                        status: isToday ? 'active' : (i < new Date().getDay() ? 'completed' : 'upcoming')
-                    };
-                });
-
-                const mealsForDay = [
-                    { id: '1', name: 'Oatmeal & Berries', nameAr: 'شوفان وتوت', time: '08:00', isCompleted: true, completedAt: Date.now() - 100000 },
-                    { id: '2', name: 'Grilled Chicken Salad', nameAr: 'سلطة دجاج مشوي', time: '13:00', isCompleted: false },
-                    { id: '3', name: 'Greek Yogurt', nameAr: 'زبادي يوناني', time: '16:00', isCompleted: false },
-                    { id: '4', name: 'Salmon with Quinoa', nameAr: 'سلمون مع كينوا', time: '19:00', isCompleted: false },
-                ];
-
-                setPlanProgress({
-                    plan: {
-                        name: userPlan.dietProgram,
-                        nameAr: userPlan.dietProgram, // Fallback
-                        emoji: '🥗', // Generic
-                        startDate: userPlan.startDate,
-                        assignedDate: userPlan.startDate,
-                        currentWeek: userPlan.weekNumber,
-                        totalWeeks: 4, // Default
-                    },
-                    weeklyStats: {
-                        completedMeals: userPlan.mealsCompleted,
-                        totalMeals: userPlan.totalMeals
-                    },
-                    days: mockDays,
-                    meals: mealsForDay
-                });
-
-            } catch (error) {
-                console.error('Error fetching client progress:', error);
-                setPlanProgress(null);
+            } catch (err) {
+                console.error('Error fetching enhanced client progress:', err);
+                setError('Failed to load progress data. Please try again.');
+                // Do not set mock data - let the error UI show with retry option
+            } finally {
+                setIsLoading(false);
             }
         };
-        fetchProgress();
-    }, [clientId, selectedDate]);
+
+        fetchEnhancedProgress();
+    }, [clientId, planId, retryCount]);
+
+    // Retry handler
+    const handleRetry = useCallback(() => {
+        setRetryCount(prev => prev + 1);
+    }, []);
 
     const handleDaySelect = useCallback((date: string) => {
         setSelectedDate(date);
@@ -242,7 +238,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
 
     // Navigate to messages with this client
     const handleMessageClient = useCallback(() => {
-        onBack(); // Close the progress view first
+        onBack?.(); // Close the progress view first
         // router.push({
         //     pathname: '/(app)/doctor/(tabs)/messages',
         //     params: { openChatWithClient: clientId },
@@ -252,7 +248,9 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
     // Send reminder notification to client
     const sendClientReminder = useCallback(async (data: { clientId: string; reminderType: string }) => {
         try {
+            await plansService.sendClientReminder(data.clientId, data.reminderType as any);
         } catch (error) {
+            console.error('Error sending reminder:', error);
         }
     }, []);
     const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -281,17 +279,23 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         }
     }, [clientId, isSendingReminder, sendClientReminder]);
 
+    // Get selected day data
+    const selectedDayData = useMemo(() => {
+        if (!progressDetails?.dailyProgress) return null;
+        return progressDetails.dailyProgress.find(d => d.date === selectedDate);
+    }, [progressDetails?.dailyProgress, selectedDate]);
+
     // Get selected day label
     const selectedDayLabel = useMemo(() => {
-        if (!planProgress?.days) return isRTL ? 'اليوم' : 'Today';
-        const day = planProgress.days.find((d: any) => d.date === selectedDate);
-        if (!day) return isRTL ? 'اليوم' : 'Today';
-        if (day.isToday) return isRTL ? 'اليوم' : 'Today';
-        return isRTL ? day.labelAr : day.label;
-    }, [planProgress?.days, selectedDate]);
+        if (!selectedDayData) return isRTL ? 'اليوم' : 'Today';
+        const dayDate = new Date(selectedDayData.date);
+        const isToday = dayDate.toDateString() === new Date().toDateString();
+        if (isToday) return isRTL ? 'اليوم' : 'Today';
+        return dayDate.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { weekday: 'short' });
+    }, [selectedDayData]);
 
     // Loading state
-    if (planProgress === undefined) {
+    if (isLoading) {
         return (
             <SafeAreaView style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primaryDark} />
@@ -301,13 +305,13 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
     }
 
     // Empty state
-    if (planProgress === null) {
+    if (!progressDetails) {
         return (
             <SafeAreaView style={styles.emptyContainer}>
                 <View style={[styles.header, isRTL && styles.headerRTL]}>
-                    <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <TouchableOpacity onPress={onBack || (() => router.back())} style={styles.backButton}>
                         <Ionicons
-                            name={isRTL ? 'arrow-back' : 'arrow-forward'}
+                            name={isRTL ? 'arrow-forward' : 'arrow-back'}
                             size={24}
                             color={colors.textPrimary}
                         />
@@ -324,20 +328,22 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         );
     }
 
-    const { plan, weeklyStats, days, meals } = planProgress;
+    const { plan, weeklyStats } = progressDetails;
+    const meals = selectedDayData?.meals || [];
 
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             {/* Header */}
             <View style={[styles.header, isRTL && styles.headerRTL, { paddingTop: insets.top }]}>
-                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                <TouchableOpacity onPress={onBack || (() => router.back())} style={styles.backButton}>
                     <Ionicons
-                        name={isRTL ? 'arrow-back' : 'arrow-forward'}
+                        name={isRTL ? 'arrow-forward' : 'arrow-back'}
                         size={24}
                         color={colors.textPrimary}
                     />
                 </TouchableOpacity>
                 <View style={[styles.headerClient, isRTL && styles.headerClientRTL]}>
+                    <Text style={styles.headerTitle}>{clientName}</Text>
                     {clientAvatar ? (
                         <Image source={{ uri: clientAvatar }} style={styles.clientAvatar} />
                     ) : (
@@ -347,7 +353,6 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                             </Text>
                         </View>
                     )}
-                    <Text style={styles.headerTitle}>{clientName}</Text>
                 </View>
                 <View style={styles.headerSpacer} />
             </View>
@@ -384,7 +389,7 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                                     <View style={styles.metaRow}>
                                         <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.7)" />
                                         <Text style={styles.metaText}>
-                                            {t.assigned} {formatStartDate(plan.assignedDate || plan.startDate)}
+                                            {t.assigned} {formatStartDate(plan.startDate)}
                                         </Text>
                                     </View>
                                     <View style={styles.metaRow}>
@@ -415,10 +420,34 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                             </View>
 
                             <DayScroller
-                                days={days.map((d: { date: string | number | Date; }) => ({
-                                    ...d,
-                                    dayNum: new Date(d.date).getDate(),
-                                }))}
+                                days={progressDetails.dailyProgress.map((d) => {
+                                    const dayDate = new Date(d.date);
+                                    const isToday = dayDate.toDateString() === new Date().toDateString();
+                                    let status: 'completed' | 'partial' | 'missed' | 'upcoming';
+
+                                    if (d.completionRate === 100) {
+                                        status = 'completed';
+                                    } else if (d.completionRate > 0) {
+                                        status = 'partial';
+                                    } else if (isToday) {
+                                        status = 'partial'; // Today with no completion is still partial (in progress)
+                                    } else {
+                                        status = 'missed';
+                                    }
+
+                                    if (dayDate > new Date()) {
+                                        status = 'upcoming';
+                                    }
+
+                                    return {
+                                        ...d,
+                                        dayNum: dayDate.getDate(),
+                                        isToday,
+                                        status,
+                                        label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
+                                        labelAr: dayDate.toLocaleDateString('ar-EG', { weekday: 'short' })
+                                    };
+                                })}
                                 selectedDate={selectedDate}
                                 onDaySelect={handleDaySelect}
                             />
@@ -515,8 +544,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: horizontalScale(16),
-        paddingVertical: verticalScale(12),
         backgroundColor: colors.bgSecondary,
+        marginBottom: verticalScale(10)
     },
     headerRTL: {
         flexDirection: 'row-reverse',

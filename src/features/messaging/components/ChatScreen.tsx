@@ -3,12 +3,12 @@ import { View, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Te
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ChatMessage, ChatConversation } from './types';
-import { MealPlan } from './MealPlanSelectorSheet';
 import ChatHeader from './ChatHeader';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import MessageActionsSheet from './MessageActionsSheet';
-import { useChatScreen } from '../hooks/useMessaging';
+import { useChatScreen } from '@/src/features/messaging/hooks/useMessaging';
+import { messagingService } from '@/src/shared/services/messaging.service';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { colors } from '@/src/core/constants/Theme';
 
@@ -65,21 +65,28 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
     }, []);
 
     // Use hook for real-time messages
-    const { messages: convexMessages, isLoading, sendMessage } = useChatScreen(conversationId);
+    const { messages: convexMessages, isLoading, sendMessage, sendVoiceMessage, hasMoreMessages, isLoadingMore, loadMoreMessages } = useChatScreen(conversationId);
 
     // Helper function to upload file to backend storage
-    const uploadFile = useCallback(async (uri: string, mimeType: string = 'audio/m4a'): Promise<string | null> => {
+    const uploadFile = useCallback(async (uri: string, mimeType: string = 'audio/m4a', filename?: string): Promise<string | null> => {
         try {
             setIsUploading(true);
 
-            // For now, return the URI directly - file upload endpoint can be added later
-            console.log('Preparing file for upload:', { uri, mimeType });
-
-            // Return the URI for now
-            return uri;
+            // Upload based on file type
+            if (mimeType.startsWith('image/')) {
+                const result = await messagingService.uploadImage(uri, filename || 'image.jpg');
+                return result.url;
+            } else if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('word')) {
+                const result = await messagingService.uploadDocument(uri, filename || 'document', mimeType);
+                return result.url;
+            } else {
+                // For audio or other files, return URI for now (voice upload handled separately)
+                console.log('File type not handled by upload service:', mimeType);
+                return uri;
+            }
         } catch (error) {
             console.error('Upload error:', error);
-            Alert.alert('خطأ', t.uploadError);
+            Alert.alert('خطأ', t.uploadError || 'فشل في رفع الملف');
             return null;
         } finally {
             setIsUploading(false);
@@ -95,7 +102,7 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
         return convexMessages.map((msg: any) => ({
             id: msg._id,
             type: msg.messageType === 'voice' ? 'audio' : msg.messageType || 'text',
-            sender: msg.senderRole === 'coach' ? 'me' : 'client',
+            sender: msg.senderRole === 'doctor' ? 'me' : 'client',
             senderId: msg.senderId,
             content: msg.content,
             timestamp: new Date(msg.createdAt).toLocaleTimeString('ar-EG', {
@@ -106,7 +113,9 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
             isEdited: msg.isEdited,
             isDeleted: msg.isDeleted,
             audioUri: msg.mediaUrl,
-            audioDuration: msg.mediaDuration,
+            audioDuration: msg.mediaDuration
+                ? (msg.optimistic ? msg.mediaDuration : msg.mediaDuration * 1000)
+                : undefined,
         }));
     }, [convexMessages]);
 
@@ -159,7 +168,7 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
 
     const handleProfilePress = useCallback(() => {
         if (conversation.clientId) {
-            // router.push(`/(app)/doctor/client-profile?id=${conversation.clientId}`);
+            router.push(`/doctor/client-profile?id=${conversation.clientId}`);
         }
     }, [conversation.clientId, router]);
 
@@ -171,37 +180,30 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
         }
     }, [conversationId, sendMessage]);
 
-    const handleSendAudio = useCallback(async (uri: string) => {
+    const handleSendAudio = useCallback(async (uri: string, duration?: number) => {
         if (!conversationId) return;
-
-        // Upload audio file to Convex storage first
-        const storageId = await uploadFile(uri, 'audio/m4a');
-        if (storageId) {
-            await sendMessage(t.voiceMessage, 'voice', storageId);
-        }
-    }, [conversationId, sendMessage, uploadFile]);
+        await sendVoiceMessage(t.voiceMessage, uri, duration);
+    }, [conversationId, sendVoiceMessage]);
 
     const handleSendImage = useCallback(async (uri: string, name: string) => {
         if (!conversationId) return;
 
-        // Upload image to Convex storage first
-        const storageId = await uploadFile(uri, 'image/jpeg');
-        if (storageId) {
-            await sendMessage(`${t.image}: ${name}`, 'image', storageId);
+        // Upload image to backend storage first
+        const mediaUrl = await uploadFile(uri, 'image/jpeg', name);
+        if (mediaUrl) {
+            await sendMessage(`${t.image}: ${name}`, 'image', mediaUrl);
         }
     }, [conversationId, sendMessage, uploadFile]);
 
-    const handleSendDocument = useCallback(async (uri: string, name: string) => {
-        if (conversationId) {
-            await sendMessage(`${t.document}: ${name}`, 'text');
-        }
-    }, [conversationId, sendMessage]);
+    const handleSendDocument = useCallback(async (uri: string, name: string, mimeType?: string) => {
+        if (!conversationId) return;
 
-    const handleSendMealPlan = useCallback(async (plan: MealPlan) => {
-        if (conversationId) {
-            await sendMessage(`${t.mealPlanAttached}: ${plan.nameAr}`, 'text');
+        // Upload document to backend storage first
+        const mediaUrl = await uploadFile(uri, mimeType || 'application/pdf', name);
+        if (mediaUrl) {
+            await sendMessage(`${t.document}: ${name}`, 'document', mediaUrl);
         }
-    }, [conversationId, sendMessage]);
+    }, [conversationId, sendMessage, uploadFile]);
 
     // Check if current user owns the selected message
     const isMessageOwner = selectedMessage?.senderId === currentUser?._id;
@@ -244,6 +246,9 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
                     messages={messages}
                     avatarUri={conversation.avatar}
                     onMessageLongPress={handleMessageLongPress}
+                    hasMoreMessages={hasMoreMessages}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={loadMoreMessages}
                 />
 
                 {/* Input */}
@@ -252,7 +257,6 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
                     onSendAudio={handleSendAudio}
                     onSendImage={handleSendImage}
                     onSendDocument={handleSendDocument}
-                    onSendMealPlan={handleSendMealPlan}
                     replyingTo={replyingTo ? { id: replyingTo.id, content: replyingTo.content, sender: replyingTo.sender } : null}
                     onCancelReply={() => setReplyingTo(null)}
                 />

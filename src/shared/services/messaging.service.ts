@@ -27,6 +27,7 @@ export interface Message {
     messageType: 'text' | 'voice' | 'image' | 'document';
     mediaUrl?: string;
     mediaDuration?: number;
+    clientTempId?: string;
     replyToId?: string;
     isDeleted: boolean;
     isEdited: boolean;
@@ -41,6 +42,28 @@ export interface SendMessageData {
     mediaUrl?: string;
     mediaDuration?: number;
     replyToId?: string;
+    clientTempId?: string;
+}
+
+export interface UploadVoiceResponse {
+    url: string;
+    voiceMessage: {
+        fileId: string;
+        filename: string;
+        duration: number;
+        size: number;
+        mimeType: string;
+    };
+}
+
+export interface UploadFileResponse {
+    url: string;
+    file: {
+        fileId: string;
+        filename: string;
+        size: number;
+        mimeType: string;
+    };
 }
 
 // API functions
@@ -134,6 +157,112 @@ export const messagingService = {
             throw new Error(response.data.message || 'Failed to send message');
         } catch (error) {
             console.error('[MessagingService] Error sending message:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Upload image file
+     */
+    async uploadImage(uri: string, filename: string): Promise<UploadFileResponse> {
+        try {
+            const formData = new FormData();
+            // @ts-ignore
+            formData.append('image', {
+                uri,
+                name: filename || 'image.jpg',
+                type: 'image/jpeg',
+            });
+
+            const response = await api.post('/chat/upload/image', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            if (response.data.success) {
+                return {
+                    url: response.data.url,
+                    file: response.data.file,
+                };
+            }
+
+            throw new Error(response.data.message || 'Failed to upload image');
+        } catch (error) {
+            console.error('[MessagingService] Error uploading image:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Upload document file
+     */
+    async uploadDocument(uri: string, filename: string, mimeType: string): Promise<UploadFileResponse> {
+        try {
+            const formData = new FormData();
+            // @ts-ignore
+            formData.append('document', {
+                uri,
+                name: filename,
+                type: mimeType,
+            });
+
+            const response = await api.post('/chat/upload/document', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            if (response.data.success) {
+                return {
+                    url: response.data.url,
+                    file: response.data.file,
+                };
+            }
+
+            throw new Error(response.data.message || 'Failed to upload document');
+        } catch (error) {
+            console.error('[MessagingService] Error uploading document:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Upload voice message audio
+     */
+    async uploadVoiceMessage(
+        uri: string,
+        duration?: number
+    ): Promise<UploadVoiceResponse> {
+        try {
+            const formData = new FormData();
+            // @ts-ignore
+            formData.append('audio', {
+                uri,
+                name: 'voice_message.m4a',
+                type: 'audio/aac',
+            });
+
+            if (typeof duration === 'number') {
+                formData.append('duration', duration.toString());
+            }
+
+            const response = await api.post('/chat/audio/upload-voice', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            if (response.data.success) {
+                return {
+                    url: response.data.url,
+                    voiceMessage: response.data.voiceMessage,
+                };
+            }
+
+            throw new Error(response.data.message || 'Failed to upload voice message');
+        } catch (error) {
+            console.error('[MessagingService] Error uploading voice message:', error);
             throw error;
         }
     },

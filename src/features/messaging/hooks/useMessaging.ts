@@ -20,6 +20,7 @@ type InternalMessage = {
     messageType?: string;
     mediaUrl?: string;
     mediaDuration?: number;
+    clientTempId?: string;
     isDeleted?: boolean;
     isEdited?: boolean;
     isReadByClient?: boolean;
@@ -33,6 +34,11 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Pagination state
+    const [hasMoreMessages, setHasMoreMessages] = useState(true);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
     // Fetch messages from backend
     useEffect(() => {
         if (!conversationId) {
@@ -44,8 +50,11 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
             setIsLoading(true);
             setError(null);
             try {
-                const response = await messagingService.getMessages(conversationId);
+                // Initial load: fetch only last 15 messages
+                const response = await messagingService.getMessages(conversationId, undefined, 15);
                 setMessages(response.messages);
+                setNextCursor(response.nextCursor);
+                setHasMoreMessages(response.nextCursor !== null);
             } catch (err) {
                 console.error('Error fetching messages:', err);
                 setError('Failed to load messages');
@@ -65,6 +74,17 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
                     // Check if message already exists (avoid duplicates)
                     const exists = prev.some((m) => m._id === message._id);
                     if (exists) return prev;
+
+                    // Replace optimistic message if clientTempId matches
+                    if (message.clientTempId) {
+                        const optimisticIndex = prev.findIndex((m) => m._id === message.clientTempId);
+                        if (optimisticIndex !== -1) {
+                            const next = [...prev];
+                            next[optimisticIndex] = message;
+                            return next;
+                        }
+                    }
+
                     return [...prev, message];
                 });
             }
@@ -158,6 +178,24 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         }
     }, [conversationId]);
 
+    // Load more (older) messages
+    const loadMoreMessages = useCallback(async () => {
+        if (!conversationId || !hasMoreMessages || isLoadingMore || !nextCursor) return;
+
+        setIsLoadingMore(true);
+        try {
+            const response = await messagingService.getMessages(conversationId, nextCursor, 15);
+            // Prepend older messages to existing array
+            setMessages((prev) => [...response.messages, ...prev]);
+            setNextCursor(response.nextCursor);
+            setHasMoreMessages(response.nextCursor !== null);
+        } catch (err) {
+            console.error('Error loading more messages:', err);
+        } finally {
+            setIsLoadingMore(false);
+        }
+    }, [conversationId, hasMoreMessages, isLoadingMore, nextCursor]);
+
     return {
         messages,
         isLoading,
@@ -167,6 +205,10 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         removeOptimisticMessage,
         updateLocal,
         markAsRead,
+        // Pagination
+        hasMoreMessages,
+        isLoadingMore,
+        loadMoreMessages,
     };
 }
 
@@ -177,10 +219,11 @@ export function useSendMessage() {
         async (data: {
             conversationId: string;
             content: string;
-            messageType?: string;
+            messageType?: 'text' | 'image' | 'voice' | 'document';
             mediaUrl?: string;
             mediaDuration?: number;
             replyToId?: string;
+            clientTempId?: string;
         }) => {
             setIsLoading(true);
             try {
@@ -190,6 +233,7 @@ export function useSendMessage() {
                     mediaUrl: data.mediaUrl,
                     mediaDuration: data.mediaDuration,
                     replyToId: data.replyToId,
+                    clientTempId: data.clientTempId,
                 });
                 setIsLoading(false);
                 return message;
@@ -206,7 +250,7 @@ export function useSendMessage() {
 }
 
 export function useChatScreen(conversationId?: string) {
-    const { messages, isLoading, markAsRead, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage } = useMessages(conversationId, 'me');
+    const { messages, isLoading, markAsRead, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage, updateLocal, hasMoreMessages, isLoadingMore, loadMoreMessages } = useMessages(conversationId, 'me');
     const { send } = useSendMessage();
 
     // Mark as read when entering conversation
@@ -219,9 +263,10 @@ export function useChatScreen(conversationId?: string) {
     const sendMessage = useCallback(
         async (
             content: string,
-            messageType: 'text' | 'image' | 'voice' = 'text',
+            messageType: 'text' | 'image' | 'voice' | 'document' = 'text',
             mediaUrl?: string,
             mediaDuration?: number,
+            replyToId?: string,
         ) => {
             if (!conversationId) return;
 
@@ -240,6 +285,8 @@ export function useChatScreen(conversationId?: string) {
                     messageType,
                     mediaUrl,
                     mediaDuration,
+                    replyToId,
+                    clientTempId: tempId || undefined,
                 });
 
                 // Replace optimistic with real
@@ -255,12 +302,60 @@ export function useChatScreen(conversationId?: string) {
         [conversationId, send, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage]
     );
 
+    const sendVoiceMessage = useCallback(
+        async (
+            content: string,
+            uri: string,
+            duration?: number,
+        ) => {
+            if (!conversationId) return;
+
+            const tempId = addOptimisticMessage({
+                content,
+                messageType: 'voice',
+                mediaUrl: uri,
+                mediaDuration: duration,
+            });
+
+            try {
+                const uploadResult = await messagingService.uploadVoiceMessage(uri, duration);
+                const response = await send({
+                    conversationId,
+                    content,
+                    messageType: 'voice',
+                    mediaUrl: uploadResult.url,
+                    mediaDuration: duration,
+                    clientTempId: tempId || undefined,
+                });
+
+                if (tempId && response) {
+                    replaceOptimisticMessage(tempId, response as any);
+                }
+            } catch (error) {
+                console.error('Failed to send voice message:', error);
+                removeOptimisticMessage(tempId);
+            }
+        },
+        [conversationId, addOptimisticMessage, replaceOptimisticMessage, removeOptimisticMessage, send]
+    );
+
     return {
         messages,
         isLoading,
         sendMessage,
+        sendVoiceMessage,
         markAsRead,
+        updateLocal,
+        // Pagination
+        hasMoreMessages,
+        isLoadingMore,
+        loadMoreMessages,
     };
+}
+
+export function useUnreadCount() {
+    const { totalUnread } = useCoachInbox('all');
+    return totalUnread;
 }
 
 export function useCoachInbox(filter: InboxFilter = 'all') {

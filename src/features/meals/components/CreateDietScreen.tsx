@@ -1,42 +1,44 @@
-import React, { useState, useCallback } from 'react';
+import React, {useCallback, useState} from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    TextInput,
     ActivityIndicator,
     Alert,
-    Modal,
     KeyboardAvoidingView,
+    Modal,
     Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import {LinearGradient} from 'expo-linear-gradient';
 import {
     ArrowLeft,
     ArrowRight,
+    Check,
     ChevronDown,
     ChevronUp,
-    Info,
     Flame,
-    UtensilsCrossed,
-    Minus,
-    Plus,
-    Pencil,
-    Trash2,
+    Info,
     LibraryBig,
-    Check,
-    FileText,
-    BookOpen,
-    ChevronRight,
-    ChevronLeft,
+    Minus,
+    Pencil,
+    Plus,
+    Trash2,
+    UtensilsCrossed,
 } from 'lucide-react-native';
-import { colors, gradients } from '@/src/core/constants/Theme';
-import { isRTL } from '@/src/core/constants/translation';
-import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { usePlanMutations, MealData, MealCategory as MealCategoryType, MealOption, DietPlanType } from '../hooks/usePlanMutations';
+import {colors, gradients} from '@/src/core/constants/Theme';
+import {isRTL} from '@/src/core/constants/translation';
+import {horizontalScale, ScaleFontSize, verticalScale} from '@/src/core/utils/scaling';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {
+    DietPlanType,
+    MealCategory as MealCategoryType,
+    MealData,
+    MealOption,
+    usePlanMutations
+} from '../hooks/usePlanMutations';
 import FoodLibraryScreen from './FoodLibraryScreen';
 
 // ============ TRANSLATIONS ============
@@ -105,7 +107,16 @@ interface EditModalProps {
     onConfirm: () => void;
 }
 
-const EditModal = ({ visible, title, nameAr, nameEn, onChangeNameAr, onChangeNameEn, onCancel, onConfirm }: EditModalProps) => (
+const EditModal = ({
+                       visible,
+                       title,
+                       nameAr,
+                       nameEn,
+                       onChangeNameAr,
+                       onChangeNameEn,
+                       onCancel,
+                       onConfirm
+                   }: EditModalProps) => (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -117,7 +128,7 @@ const EditModal = ({ visible, title, nameAr, nameEn, onChangeNameAr, onChangeNam
                 <View style={styles.modalInputGroup}>
                     <Text style={styles.modalInputLabel}>{t.nameAr}</Text>
                     <TextInput
-                        style={[styles.modalInput, { textAlign: 'right' }]}
+                        style={[styles.modalInput, {textAlign: 'right'}]}
                         value={nameAr}
                         onChangeText={onChangeNameAr}
                         placeholder={t.nameAr}
@@ -128,7 +139,7 @@ const EditModal = ({ visible, title, nameAr, nameEn, onChangeNameAr, onChangeNam
                 <View style={styles.modalInputGroup}>
                     <Text style={styles.modalInputLabel}>{t.nameEn}</Text>
                     <TextInput
-                        style={[styles.modalInput, { textAlign: 'left' }]}
+                        style={[styles.modalInput, {textAlign: 'left'}]}
                         value={nameEn}
                         onChangeText={onChangeNameEn}
                         placeholder={t.nameEn}
@@ -143,11 +154,11 @@ const EditModal = ({ visible, title, nameAr, nameEn, onChangeNameAr, onChangeNam
                     <TouchableOpacity onPress={onConfirm}>
                         <LinearGradient
                             colors={gradients.primary}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
+                            start={{x: 0, y: 0}}
+                            end={{x: 1, y: 0}}
                             style={styles.modalConfirmButton}
                         >
-                            <Check size={horizontalScale(18)} color="#FFFFFF" />
+                            <Check size={horizontalScale(18)} color="#FFFFFF"/>
                             <Text style={styles.modalConfirmText}>{t.confirm}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
@@ -166,7 +177,7 @@ interface AddFoodModalProps {
     onConfirm: () => void;
 }
 
-const AddFoodModal = ({ visible, value, onChangeValue, onCancel, onConfirm }: AddFoodModalProps) => (
+const AddFoodModal = ({visible, value, onChangeValue, onCancel, onConfirm}: AddFoodModalProps) => (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -178,7 +189,7 @@ const AddFoodModal = ({ visible, value, onChangeValue, onCancel, onConfirm }: Ad
                 <View style={styles.modalInputGroup}>
                     <Text style={styles.modalInputLabel}>{t.foodItem}</Text>
                     <TextInput
-                        style={[styles.modalInput, { textAlign: isRTL ? 'right' : 'left' }]}
+                        style={[styles.modalInput, {textAlign: isRTL ? 'right' : 'left'}]}
                         value={value}
                         onChangeText={onChangeValue}
                         placeholder={t.enterFoodItem}
@@ -194,11 +205,11 @@ const AddFoodModal = ({ visible, value, onChangeValue, onCancel, onConfirm }: Ad
                     <TouchableOpacity onPress={onConfirm}>
                         <LinearGradient
                             colors={gradients.primary}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
+                            start={{x: 0, y: 0}}
+                            end={{x: 1, y: 0}}
                             style={styles.modalConfirmButton}
                         >
-                            <Plus size={horizontalScale(18)} color="#FFFFFF" />
+                            <Plus size={horizontalScale(18)} color="#FFFFFF"/>
                             <Text style={styles.modalConfirmText}>{t.addFoodItem}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
@@ -214,16 +225,16 @@ interface FoodItemProps {
     onRemove: () => void;
 }
 
-const FoodItem = ({ item, onRemove }: FoodItemProps) => (
-    <View style={[styles.foodItem, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-        <View style={[styles.foodItemContent, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            <View style={styles.foodItemDot} />
-            <Text style={[styles.foodItemText, { textAlign: isRTL ? 'right' : 'left' }]}>
+const FoodItem = ({item, onRemove}: FoodItemProps) => (
+    <View style={[styles.foodItem, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+        <View style={[styles.foodItemContent, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+            <View style={styles.foodItemDot}/>
+            <Text style={[styles.foodItemText, {textAlign: isRTL ? 'right' : 'left'}]}>
                 {item.text}{item.textEn ? ` (${item.textEn})` : ''}
             </Text>
         </View>
         <TouchableOpacity style={styles.removeItemButton} onPress={onRemove}>
-            <Trash2 size={horizontalScale(16)} color="#EF4444" />
+            <Trash2 size={horizontalScale(16)} color="#EF4444"/>
         </TouchableOpacity>
     </View>
 );
@@ -237,16 +248,16 @@ interface CategoryCardProps {
     onRemoveFood: (itemId: string) => void;
 }
 
-const CategoryCard = ({ category, onEditName, onDeleteCategory, onAddFood, onRemoveFood }: CategoryCardProps) => (
+const CategoryCard = ({category, onEditName, onDeleteCategory, onAddFood, onRemoveFood}: CategoryCardProps) => (
     <View style={styles.categoryCard}>
         {/* Category Header */}
-        <View style={[styles.categoryHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-            <View style={[styles.categoryActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+        <View style={[styles.categoryHeader, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+            <View style={[styles.categoryActions, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                 <TouchableOpacity style={styles.categoryActionButton} onPress={onEditName}>
-                    <Pencil size={horizontalScale(16)} color={colors.textSecondary} />
+                    <Pencil size={horizontalScale(16)} color={colors.textSecondary}/>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.categoryActionButton} onPress={onDeleteCategory}>
-                    <Trash2 size={horizontalScale(16)} color="#EF4444" />
+                    <Trash2 size={horizontalScale(16)} color="#EF4444"/>
                 </TouchableOpacity>
             </View>
             <Text style={styles.categoryTitle}>
@@ -267,10 +278,10 @@ const CategoryCard = ({ category, onEditName, onDeleteCategory, onAddFood, onRem
 
         {/* Add Food Item Button */}
         <TouchableOpacity
-            style={[styles.addItemButton, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+            style={[styles.addItemButton, {flexDirection: isRTL ? 'row-reverse' : 'row'}]}
             onPress={onAddFood}
         >
-            <Plus size={horizontalScale(18)} color={colors.primaryDark} />
+            <Plus size={horizontalScale(18)} color={colors.primaryDark}/>
             <Text style={styles.addItemText}>{t.addFoodItem}</Text>
         </TouchableOpacity>
     </View>
@@ -291,17 +302,17 @@ interface MealCardProps {
 }
 
 const MealCard = ({
-    meal,
-    isExpanded,
-    onToggle,
-    onDelete,
-    onEditName,
-    onAddCategory,
-    onEditCategoryName,
-    onDeleteCategory,
-    onAddFood,
-    onRemoveFood,
-}: MealCardProps) => {
+                      meal,
+                      isExpanded,
+                      onToggle,
+                      onDelete,
+                      onEditName,
+                      onAddCategory,
+                      onEditCategoryName,
+                      onDeleteCategory,
+                      onAddFood,
+                      onRemoveFood,
+                  }: MealCardProps) => {
     // Calculate options count
     const optionsCount = meal.categories.reduce((sum, cat) => sum + cat.options.length, 0);
 
@@ -309,26 +320,26 @@ const MealCard = ({
         <View style={styles.mealCard}>
             {/* Meal Summary Header */}
             <TouchableOpacity
-                style={[styles.mealHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                style={[styles.mealHeader, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}
                 onPress={onToggle}
                 activeOpacity={0.7}
             >
-                <View style={[styles.mealActions, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                <View style={[styles.mealActions, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                     {isExpanded ? (
-                        <ChevronUp size={horizontalScale(20)} color={colors.textSecondary} />
+                        <ChevronUp size={horizontalScale(20)} color={colors.textSecondary}/>
                     ) : (
-                        <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
+                        <ChevronDown size={horizontalScale(20)} color={colors.textSecondary}/>
                     )}
 
                     <TouchableOpacity style={styles.mealActionButton} onPress={onEditName}>
-                        <Pencil size={horizontalScale(20)} color={colors.textSecondary} />
+                        <Pencil size={horizontalScale(20)} color={colors.textSecondary}/>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.mealActionButton} onPress={onDelete}>
-                        <Trash2 size={horizontalScale(20)} color={colors.textSecondary} />
+                        <Trash2 size={horizontalScale(20)} color={colors.textSecondary}/>
                     </TouchableOpacity>
                 </View>
-                <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-                    <Text style={[styles.mealTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+                <View style={{alignItems: isRTL ? 'flex-end' : 'flex-start'}}>
+                    <Text style={[styles.mealTitle, {textAlign: isRTL ? 'right' : 'left'}]}>
                         {meal.emoji || '🍽️'} {meal.nameAr || meal.name} ({meal.name})
                     </Text>
                     <Text style={styles.mealSubtitle}>
@@ -355,10 +366,10 @@ const MealCard = ({
 
                     {/* Add Category Button */}
                     <TouchableOpacity
-                        style={[styles.addCategoryButton, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
+                        style={[styles.addCategoryButton, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}
                         onPress={onAddCategory}
                     >
-                        <LibraryBig size={horizontalScale(20)} color={colors.textSecondary} />
+                        <LibraryBig size={horizontalScale(20)} color={colors.textSecondary}/>
                         <Text style={styles.addCategoryText}>{t.addFoodCategory}</Text>
                     </TouchableOpacity>
                 </View>
@@ -370,9 +381,9 @@ const MealCard = ({
 // ============ HELPER: Create default meals ============
 const createDefaultMeals = (): MealData[] => {
     const defaultMeals = [
-        { name: 'Breakfast', nameAr: 'الفطور', emoji: '🌅' },
-        { name: 'Lunch', nameAr: 'الغداء', emoji: '🌞' },
-        { name: 'Dinner', nameAr: 'العشاء', emoji: '🌙' },
+        {name: 'Breakfast', nameAr: 'الفطور', emoji: '🌅'},
+        {name: 'Lunch', nameAr: 'الغداء', emoji: '🌞'},
+        {name: 'Dinner', nameAr: 'العشاء', emoji: '🌙'},
     ];
 
     return defaultMeals.map(meal => ({
@@ -391,8 +402,8 @@ const createDefaultMeals = (): MealData[] => {
 };
 
 // ============ MAIN COMPONENT ============
-export default function CreateDietScreen({ categoryId, categoryType, onBack, onSave }: Props) {
-    const { createDietPlan, isLoading: isSaving } = usePlanMutations();
+export default function CreateDietScreen({categoryId, categoryType, onBack, onSave}: Props) {
+    const {createDietPlan, isLoading: isSaving} = usePlanMutations();
     const insets = useSafeAreaInsets();
 
     // ===== FORM STATE =====
@@ -456,7 +467,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
             t.deleteMeal,
             `${t.deleteMealConfirm} "${mealName}"?`,
             [
-                { text: t.cancel, style: 'cancel' },
+                {text: t.cancel, style: 'cancel'},
                 {
                     text: t.delete,
                     style: 'destructive',
@@ -489,7 +500,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
         setLocalMeals(prev =>
             prev.map(meal =>
                 meal.id === editMealModal.mealId
-                    ? { ...meal, name: editMealModal.nameEn, nameAr: editMealModal.nameAr }
+                    ? {...meal, name: editMealModal.nameEn, nameAr: editMealModal.nameAr}
                     : meal
             )
         );
@@ -509,7 +520,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
         setLocalMeals(prev =>
             prev.map(meal =>
                 meal.id === mealId
-                    ? { ...meal, categories: [...meal.categories, newCategory] }
+                    ? {...meal, categories: [...meal.categories, newCategory]}
                     : meal
             )
         );
@@ -543,7 +554,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         ...meal,
                         categories: meal.categories.map(cat =>
                             cat.id === editCategoryModal.categoryId
-                                ? { ...cat, name: editCategoryModal.nameEn, nameAr: editCategoryModal.nameAr }
+                                ? {...cat, name: editCategoryModal.nameEn, nameAr: editCategoryModal.nameAr}
                                 : cat
                         ),
                     }
@@ -563,7 +574,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
             isRTL ? 'حذف الفئة' : 'Delete Category',
             `${isRTL ? 'هل أنت متأكد من حذف' : 'Are you sure you want to delete'} "${categoryName}"?`,
             [
-                { text: t.cancel, style: 'cancel' },
+                {text: t.cancel, style: 'cancel'},
                 {
                     text: t.delete,
                     style: 'destructive',
@@ -571,7 +582,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         setLocalMeals(prev =>
                             prev.map(meal =>
                                 meal.id === mealId
-                                    ? { ...meal, categories: meal.categories.filter(c => c.id !== categoryId) }
+                                    ? {...meal, categories: meal.categories.filter(c => c.id !== categoryId)}
                                     : meal
                             )
                         );
@@ -594,7 +605,12 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
     }, []);
 
     // Handle foods selected from library
-    const handleLibraryFoodsSelected = useCallback((foods: { id: string; nameAr: string; nameEn: string; calories: number }[]) => {
+    const handleLibraryFoodsSelected = useCallback((foods: {
+        id: string;
+        nameAr: string;
+        nameEn: string;
+        calories: number
+    }[]) => {
         if (!foodLibraryContext) {
             setShowFoodLibrary(false);
             return;
@@ -614,7 +630,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         ...meal,
                         categories: meal.categories.map(cat =>
                             cat.id === foodLibraryContext.categoryId
-                                ? { ...cat, options: [...cat.options, ...newItems] }
+                                ? {...cat, options: [...cat.options, ...newItems]}
                                 : cat
                         ),
                     }
@@ -642,7 +658,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         ...meal,
                         categories: meal.categories.map(cat =>
                             cat.id === addFoodModal.categoryId
-                                ? { ...cat, options: [...cat.options, newItem] }
+                                ? {...cat, options: [...cat.options, newItem]}
                                 : cat
                         ),
                     }
@@ -661,7 +677,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         ...meal,
                         categories: meal.categories.map(cat =>
                             cat.id === categoryId
-                                ? { ...cat, options: cat.options.filter(opt => opt.id !== itemId) }
+                                ? {...cat, options: cat.options.filter(opt => opt.id !== itemId)}
                                 : cat
                         ),
                     }
@@ -673,8 +689,8 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
     // ===== UI HANDLERS =====
 
     const BackArrow = () => isRTL
-        ? <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />
-        : <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />;
+        ? <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary}/>
+        : <ArrowRight size={horizontalScale(24)} color={colors.textPrimary}/>;
 
     const toggleMealExpansion = (mealId: string) => {
         setExpandedMeals(prev =>
@@ -699,7 +715,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
             Alert.alert(
                 isRTL ? 'خطأ' : 'Error',
                 t.nameRequired,
-                [{ text: isRTL ? 'حسناً' : 'OK' }]
+                [{text: isRTL ? 'حسناً' : 'OK'}]
             );
             return;
         }
@@ -734,14 +750,19 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
             Alert.alert(
                 isRTL ? 'تم الإنشاء' : 'Created',
                 t.createSuccess,
-                [{ text: isRTL ? 'حسناً' : 'OK', onPress: () => { onSave?.(); onBack(); } }]
+                [{
+                    text: isRTL ? 'حسناً' : 'OK', onPress: () => {
+                        onSave?.();
+                        onBack();
+                    }
+                }]
             );
         } catch (error) {
             console.error('=== CREATE FAILED ===', error);
             Alert.alert(
                 isRTL ? 'خطأ' : 'Error',
                 t.createError,
-                [{ text: isRTL ? 'حسناً' : 'OK' }]
+                [{text: isRTL ? 'حسناً' : 'OK'}]
             );
         }
     };
@@ -764,9 +785,9 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
     return (
         <SafeAreaView edges={['left', 'right']} style={styles.container}>
             {/* Header */}
-            <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse', paddingTop: insets.top }]}>
+            <View style={[styles.header, {flexDirection: isRTL ? 'row' : 'row-reverse', paddingTop: insets.top}]}>
                 <TouchableOpacity onPress={onBack} style={styles.backButton}>
-                    <BackArrow />
+                    <BackArrow/>
                 </TouchableOpacity>
 
                 <Text style={styles.headerTitle} numberOfLines={1}>
@@ -776,12 +797,12 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                 <TouchableOpacity onPress={handleSave} activeOpacity={0.9} disabled={isSaving}>
                     <LinearGradient
                         colors={isSaving ? ['#E1E8EF', '#E1E8EF'] : gradients.primary}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
                         style={styles.saveButton}
                     >
                         {isSaving ? (
-                            <ActivityIndicator size="small" color={colors.textSecondary} />
+                            <ActivityIndicator size="small" color={colors.textSecondary}/>
                         ) : (
                             <Text style={styles.saveButtonText}>{t.create}</Text>
                         )}
@@ -790,7 +811,8 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
             </View>
 
-            <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1, paddingBottom: verticalScale(30) }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.content} contentContainerStyle={{flexGrow: 1, paddingBottom: verticalScale(30)}}
+                        showsVerticalScrollIndicator={false}>
                 {/* Basic Info Section */}
                 <View style={styles.section}>
                     <TouchableOpacity
@@ -799,14 +821,14 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         activeOpacity={0.7}
                     >
                         {basicInfoOpen ? (
-                            <ChevronUp size={horizontalScale(20)} color={colors.textSecondary} />
+                            <ChevronUp size={horizontalScale(20)} color={colors.textSecondary}/>
                         ) : (
-                            <ChevronDown size={horizontalScale(20)} color={colors.textSecondary} />
+                            <ChevronDown size={horizontalScale(20)} color={colors.textSecondary}/>
                         )}
-                        <View style={[styles.sectionHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <View style={[styles.sectionHeaderLeft, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                             <Text style={styles.sectionTitle}>{t.basicInfo}</Text>
                             <View style={styles.sectionIcon}>
-                                <Info size={horizontalScale(20)} color={colors.primaryDark} />
+                                <Info size={horizontalScale(20)} color={colors.primaryDark}/>
                             </View>
                         </View>
 
@@ -816,11 +838,11 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                         <View style={styles.sectionContent}>
                             {/* Plan Name Input */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                <Text style={[styles.inputLabel, {textAlign: isRTL ? 'right' : 'left'}]}>
                                     {t.planName}
                                 </Text>
                                 <TextInput
-                                    style={[styles.inputSimple, { textAlign: isRTL ? 'right' : 'left' }]}
+                                    style={[styles.inputSimple, {textAlign: isRTL ? 'right' : 'left'}]}
                                     value={name}
                                     onChangeText={setName}
                                     placeholder={t.enterPlanName}
@@ -830,13 +852,14 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
                             {/* Calorie Range Input */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                <Text style={[styles.inputLabel, {textAlign: isRTL ? 'right' : 'left'}]}>
                                     {t.calorieRange}
                                 </Text>
                                 <View style={styles.inputContainer}>
-                                    <Flame size={horizontalScale(20)} color={colors.textSecondary} style={styles.inputIcon} />
+                                    <Flame size={horizontalScale(20)} color={colors.textSecondary}
+                                           style={styles.inputIcon}/>
                                     <TextInput
-                                        style={[styles.input, { textAlign: isRTL ? 'right' : 'left' }]}
+                                        style={[styles.input, {textAlign: isRTL ? 'right' : 'left'}]}
                                         value={targetCalories}
                                         onChangeText={setTargetCalories}
                                         placeholder={t.enterCalorieRange}
@@ -848,11 +871,11 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
                             {/* Goal Description Input */}
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                <Text style={[styles.inputLabel, {textAlign: isRTL ? 'right' : 'left'}]}>
                                     {t.goalDescription}
                                 </Text>
                                 <TextInput
-                                    style={[styles.inputSimple, { textAlign: isRTL ? 'right' : 'left' }]}
+                                    style={[styles.inputSimple, {textAlign: isRTL ? 'right' : 'left'}]}
                                     value={description}
                                     onChangeText={setDescription}
                                     placeholder={t.enterGoal}
@@ -861,7 +884,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                             </View>
 
                             {/* Meals Per Day Stepper */}
-                            <View style={[styles.stepperRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <View style={[styles.stepperRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                                 <View style={styles.stepperControls}>
                                     <TouchableOpacity
                                         style={styles.stepperButtonActive}
@@ -886,7 +909,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                                             setExpandedMeals(prev => [...prev, newMeal.id]);
                                         }}
                                     >
-                                        <Plus size={horizontalScale(18)} color="#FFFFFF" />
+                                        <Plus size={horizontalScale(18)} color="#FFFFFF"/>
                                     </TouchableOpacity>
                                     <Text style={styles.stepperValue}>{localMeals.length}</Text>
                                     <TouchableOpacity
@@ -898,13 +921,13 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                                             }
                                         }}
                                     >
-                                        <Minus size={horizontalScale(18)} color={colors.textSecondary} />
+                                        <Minus size={horizontalScale(18)} color={colors.textSecondary}/>
                                     </TouchableOpacity>
 
                                 </View>
-                                <View style={[styles.stepperLabel, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <View style={[styles.stepperLabel, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                                     <Text style={styles.stepperText}>{t.mealsPerDay}</Text>
-                                    <UtensilsCrossed size={horizontalScale(20)} color={colors.textSecondary} />
+                                    <UtensilsCrossed size={horizontalScale(20)} color={colors.textSecondary}/>
                                 </View>
 
                             </View>
@@ -914,7 +937,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
 
                 {/* Meal Plan Editor */}
                 <View style={styles.mealEditorSection}>
-                    <View style={[styles.mealEditorHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.mealEditorHeader, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
                         <TouchableOpacity onPress={handleExpandAll}>
                             <Text style={styles.expandAllText}>{t.expandAll}</Text>
                         </TouchableOpacity>
@@ -948,7 +971,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                 </View>
 
                 {/* Bottom padding */}
-                <View style={{ height: verticalScale(24) }} />
+                <View style={{height: verticalScale(24)}}/>
             </ScrollView>
 
             {/* Edit Meal Modal */}
@@ -958,8 +981,8 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                     title={t.editMealName}
                     nameAr={editMealModal.nameAr}
                     nameEn={editMealModal.nameEn}
-                    onChangeNameAr={(text) => setEditMealModal(prev => prev ? { ...prev, nameAr: text } : null)}
-                    onChangeNameEn={(text) => setEditMealModal(prev => prev ? { ...prev, nameEn: text } : null)}
+                    onChangeNameAr={(text) => setEditMealModal(prev => prev ? {...prev, nameAr: text} : null)}
+                    onChangeNameEn={(text) => setEditMealModal(prev => prev ? {...prev, nameEn: text} : null)}
                     onCancel={() => setEditMealModal(null)}
                     onConfirm={handleConfirmEditMeal}
                 />
@@ -972,8 +995,8 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                     title={t.editCategoryName}
                     nameAr={editCategoryModal.nameAr}
                     nameEn={editCategoryModal.nameEn}
-                    onChangeNameAr={(text) => setEditCategoryModal(prev => prev ? { ...prev, nameAr: text } : null)}
-                    onChangeNameEn={(text) => setEditCategoryModal(prev => prev ? { ...prev, nameEn: text } : null)}
+                    onChangeNameAr={(text) => setEditCategoryModal(prev => prev ? {...prev, nameAr: text} : null)}
+                    onChangeNameEn={(text) => setEditCategoryModal(prev => prev ? {...prev, nameEn: text} : null)}
                     onCancel={() => setEditCategoryModal(null)}
                     onConfirm={handleConfirmEditCategory}
                 />
@@ -984,7 +1007,7 @@ export default function CreateDietScreen({ categoryId, categoryType, onBack, onS
                 <AddFoodModal
                     visible={addFoodModal.visible}
                     value={addFoodModal.value}
-                    onChangeValue={(text) => setAddFoodModal(prev => prev ? { ...prev, value: text } : null)}
+                    onChangeValue={(text) => setAddFoodModal(prev => prev ? {...prev, value: text} : null)}
                     onCancel={() => setAddFoodModal(null)}
                     onConfirm={handleConfirmAddFood}
                 />
@@ -1424,7 +1447,7 @@ const styles = StyleSheet.create({
         paddingBottom: verticalScale(32),
         paddingTop: verticalScale(12),
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -10 },
+        shadowOffset: {width: 0, height: -10},
         shadowOpacity: 0.15,
         shadowRadius: 20,
         elevation: 20,

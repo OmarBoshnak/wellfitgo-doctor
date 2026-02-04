@@ -11,6 +11,12 @@ export interface ChatMessage {
     isDeleted?: boolean;
     audioUri?: string;
     audioDuration?: number; // milliseconds
+    replyToId?: string; // ID of the message being replied to
+    replyTo?: {
+        id: string;
+        content: string;
+        sender: 'me' | 'client';
+    }; // Preview of replied message
 }
 
 export interface ChatConversation {

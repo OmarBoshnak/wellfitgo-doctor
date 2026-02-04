@@ -1,31 +1,62 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { ChatMessage } from './types';
 import MessageBubble from './MessageBubble';
+import { colors } from '@/src/core/constants/Theme';
 
 // Arabic translations
 const t = {
     today: 'اليوم',
+    loadingMore: 'جاري تحميل المزيد...',
 };
 
 interface Props {
     messages: ChatMessage[];
     avatarUri?: string;
     onMessageLongPress?: (message: ChatMessage) => void;
+    // Pagination props
+    hasMoreMessages?: boolean;
+    isLoadingMore?: boolean;
+    onLoadMore?: () => void;
 }
 
-const MessageList = React.memo(function MessageList({ messages, avatarUri, onMessageLongPress }: Props) {
+const MessageList = React.memo(function MessageList({
+    messages,
+    avatarUri,
+    onMessageLongPress,
+    hasMoreMessages = false,
+    isLoadingMore = false,
+    onLoadMore,
+}: Props) {
     const flatListRef = useRef<FlatList>(null);
+    const [prevMessagesLength, setPrevMessagesLength] = useState(0);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-    // Auto-scroll to bottom when new messages arrive
+    // Auto-scroll to bottom only when new messages arrive at the end (not during pagination)
     useEffect(() => {
-        if (messages.length > 0) {
+        if (messages.length > prevMessagesLength && shouldAutoScroll) {
             setTimeout(() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
         }
-    }, [messages.length]);
+        setPrevMessagesLength(messages.length);
+    }, [messages.length, prevMessagesLength, shouldAutoScroll]);
+
+    // Scroll detection for loading more messages
+    const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const isNearTop = contentOffset.y < 100;
+        const isNearBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 100;
+
+        // Update auto-scroll behavior based on scroll position
+        setShouldAutoScroll(isNearBottom);
+
+        // Trigger load more when near top
+        if (isNearTop && hasMoreMessages && !isLoadingMore) {
+            onLoadMore?.();
+        }
+    }, [hasMoreMessages, isLoadingMore, onLoadMore]);
 
     const renderItem = ({ item, index }: { item: ChatMessage; index: number }) => {
         // Determine if we should show avatar (first message or different sender)
@@ -44,9 +75,18 @@ const MessageList = React.memo(function MessageList({ messages, avatarUri, onMes
         );
     };
 
-    const renderHeader = () => (
-        <View style={styles.header}>
-            <Text style={styles.dateSeparator}>{t.today}</Text>
+    // Loading indicator at top during pagination
+    const renderLoadingHeader = () => (
+        <View>
+            {isLoadingMore && (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="small" color={colors.primaryDark} />
+                    <Text style={styles.loadingText}>{t.loadingMore}</Text>
+                </View>
+            )}
+            <View style={styles.header}>
+                <Text style={styles.dateSeparator}>{t.today}</Text>
+            </View>
         </View>
     );
 
@@ -58,11 +98,16 @@ const MessageList = React.memo(function MessageList({ messages, avatarUri, onMes
             data={messages}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
-            ListHeaderComponent={renderHeader}
+            ListHeaderComponent={renderLoadingHeader}
             style={styles.list}
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+                autoscrollToTopThreshold: 10,
+            }}
         />
     );
 });
@@ -87,5 +132,16 @@ const styles = StyleSheet.create({
         fontSize: ScaleFontSize(12),
         fontWeight: '500',
         color: '#AAB8C5',
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: verticalScale(12),
+        gap: horizontalScale(8),
+    },
+    loadingText: {
+        fontSize: ScaleFontSize(12),
+        color: colors.textSecondary,
     },
 });

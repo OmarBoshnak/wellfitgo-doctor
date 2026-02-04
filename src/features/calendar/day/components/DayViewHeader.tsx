@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Calendar } from 'lucide-react-native';
@@ -30,6 +30,24 @@ export const DayViewHeader: React.FC<DayViewHeaderProps> = ({
     const weekDays = getWeekStripDays(currentDate);
     const selectedDayNumber = currentDate.getDate();
 
+    const handleBackPress = useCallback(() => {
+        console.log('DayViewHeader back button pressed'); // Debug log
+        try {
+            // Check if we can go back
+            if (router.canGoBack()) {
+                router.back();
+            } else {
+                // No navigation history, go to calendar
+                console.log('No back history, navigating to calendar');
+                router.replace('/doctor-calendar');
+            }
+        } catch (error) {
+            console.error('DayViewHeader router back failed:', error);
+            // Fallback: go to calendar
+            router.replace('/doctor-calendar');
+        }
+    }, [router]);
+
     return (
         <LinearGradient
             colors={['#4d6efe', '#6b85ff']}
@@ -39,7 +57,8 @@ export const DayViewHeader: React.FC<DayViewHeaderProps> = ({
             <View style={[styles.nav, { flexDirection: isRTL ? 'row' : 'row-reverse' }, style]}>
                 <TouchableOpacity
                     style={styles.navButton}
-                    onPress={() => router.back()}
+                    onPress={handleBackPress}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                     <ArrowLeft
                         size={horizontalScale(24)}
@@ -121,6 +140,11 @@ const styles = StyleSheet.create({
     },
     navButton: {
         borderRadius: horizontalScale(20),
+        padding: horizontalScale(8),
+        minWidth: horizontalScale(40),
+        minHeight: verticalScale(40),
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     title: {
         fontSize: ScaleFontSize(18),

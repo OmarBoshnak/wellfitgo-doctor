@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
         textAlign: 'right',
     },
     optionsContainer: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         flexWrap: 'wrap',
         paddingHorizontal: horizontalScale(16),
         paddingVertical: verticalScale(16),

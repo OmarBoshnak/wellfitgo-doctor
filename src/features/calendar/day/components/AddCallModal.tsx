@@ -348,9 +348,9 @@ export const AddCallModal: React.FC<AddCallModalProps> = ({
 
                             {activePicker === 'client' && (
                                 <View style={styles.dropdown}>
-                                    {clients?.map((client: any) => (
+                                    {clients?.map((client: any, index: number) => (
                                         <TouchableOpacity
-                                            key={client._id}
+                                            key={client._id || `client-${index}`}
                                             style={[
                                                 styles.dropdownItem,
                                                 { flexDirection: isRTL ? 'row' : 'row-reverse' },

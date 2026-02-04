@@ -5,7 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import AttachmentSheet, { AttachmentResult } from './AttachmentSheet';
-import MealPlanSelectorSheet, { MealPlan } from './MealPlanSelectorSheet';
 import { colors } from '@/src/core/constants/Theme';
 
 import { Audio } from 'expo-av';
@@ -25,8 +24,7 @@ interface Props {
     onSendText: (text: string) => void;
     onSendAudio: (uri: string, duration?: number) => void;
     onSendImage: (uri: string, name: string) => void;
-    onSendDocument: (uri: string, name: string) => void;
-    onSendMealPlan: (plan: MealPlan) => void;
+    onSendDocument: (uri: string, name: string, mimeType?: string) => void;
     replyingTo?: { id: string; content: string; sender: string } | null;
     onCancelReply?: () => void;
 }
@@ -36,7 +34,6 @@ export default function ChatInput({
     onSendAudio,
     onSendImage,
     onSendDocument,
-    onSendMealPlan,
     replyingTo,
     onCancelReply,
 }: Props) {
@@ -44,7 +41,6 @@ export default function ChatInput({
     const [recordingState, setRecordingState] = useState<RecordingState>('idle');
     const [recordingDuration, setRecordingDuration] = useState(0);
     const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
-    const [showMealPlanSheet, setShowMealPlanSheet] = useState(false);
     const [permissionDenied, setPermissionDenied] = useState(false);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -166,7 +162,7 @@ export default function ChatInput({
 
             console.log('Creating recording...');
             const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
+                Audio.RecordingOptionsPresets.LOW_QUALITY
             );
 
             console.log('Recording started successfully');
@@ -269,13 +265,9 @@ export default function ChatInput({
         if (result.type === 'image' && result.uri) {
             onSendImage(result.uri, result.name || 'image.jpg');
         } else if (result.type === 'document' && result.uri) {
-            onSendDocument(result.uri, result.name || 'document');
+            onSendDocument(result.uri, result.name || 'document', result.mimeType);
         }
     }, [onSendImage, onSendDocument]);
-
-    const handleMealPlanSelect = useCallback((plan: MealPlan) => {
-        onSendMealPlan(plan);
-    }, [onSendMealPlan]);
 
     // Render waveform bars
     const renderWaveform = () => (
@@ -337,8 +329,8 @@ export default function ChatInput({
                             end={{ x: 1, y: 0 }}
                             style={styles.sendVoiceGradient}
                         >
+                                                        <Text style={styles.sendVoiceText}>{t.send}</Text>
                             <MaterialIcons name="send" size={18} color="#FFFFFF" style={styles.sendIcon} />
-                            <Text style={styles.sendVoiceText}>{t.send}</Text>
                         </LinearGradient>
                     </TouchableOpacity>
 
@@ -445,14 +437,6 @@ export default function ChatInput({
                 visible={showAttachmentSheet}
                 onClose={() => setShowAttachmentSheet(false)}
                 onAttachmentSelected={handleAttachment}
-                onMealPlanPress={() => setShowMealPlanSheet(true)}
-            />
-
-            {/* Meal Plan Selector Sheet */}
-            <MealPlanSelectorSheet
-                visible={showMealPlanSheet}
-                onClose={() => setShowMealPlanSheet(false)}
-                onSelect={handleMealPlanSelect}
             />
 
             {/* Emoji Picker */}

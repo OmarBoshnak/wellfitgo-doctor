@@ -5,6 +5,7 @@ import { colors } from '@/src/core/constants/Theme';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { isRTL } from '@/src/core/constants/translation';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
+import { useUnreadCount } from '@/src/features/messaging';
 
 // Tab labels
 const tabLabels = {
@@ -27,11 +28,7 @@ function TabBadge({ count }: { count: number }) {
 
 // Messages tab icon with real-time unread count
 function MessagesTabIcon({ color, size }: { color: string; size: number }) {
-    const [unreadCount, setUnreadCount] = useState(0);
-
-    useEffect(() => {
-        // TODO: Fetch unread count from backend API / socket
-    }, []);
+    const unreadCount = useUnreadCount();
 
     return (
         <View>

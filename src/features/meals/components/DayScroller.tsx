@@ -69,7 +69,16 @@ export const DayScroller: React.FC<DayScrollerProps> = ({
         if (todayIndex >= 0 && scrollViewRef.current) {
             // Scroll to center the today item
             const itemWidth = horizontalScale(70) + horizontalScale(8);
-            const scrollX = todayIndex * itemWidth - itemWidth * 2;
+            let scrollX: number;
+
+            if (isRTL) {
+                // For RTL, calculate from the reversed position
+                const reversedIndex = days.length - 1 - todayIndex;
+                scrollX = reversedIndex * itemWidth - itemWidth * 2;
+            } else {
+                scrollX = todayIndex * itemWidth - itemWidth * 2;
+            }
+
             setTimeout(() => {
                 scrollViewRef.current?.scrollTo({
                     x: Math.max(0, scrollX),
@@ -77,7 +86,7 @@ export const DayScroller: React.FC<DayScrollerProps> = ({
                 });
             }, 100);
         }
-    }, [days]);
+    }, [days, isRTL]);
 
     const renderDayItem = (day: typeof daysWithMonth[0], index: number) => {
         const isSelected = day.date === selectedDate;
@@ -162,10 +171,16 @@ export const DayScroller: React.FC<DayScrollerProps> = ({
                 ref={scrollViewRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    isRTL && styles.scrollContentRTL
+                ]}
                 decelerationRate='normal'
             >
-                {daysWithMonth.map((day, index) => renderDayItem(day, index))}
+                {isRTL
+                    ? [...daysWithMonth].reverse().map((day, index) => renderDayItem(day, daysWithMonth.length - 1 - index))
+                    : daysWithMonth.map((day, index) => renderDayItem(day, index))
+                }
             </ScrollView>
         </View>
     );
@@ -179,6 +194,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: horizontalScale(8),
         gap: horizontalScale(6),
         alignItems: 'center',
+    },
+    scrollContentRTL: {
+        flexDirection: 'row-reverse',
     },
     weekSeparator: {
         flexDirection: 'row',

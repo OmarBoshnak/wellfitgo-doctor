@@ -18,6 +18,8 @@ export type DietType =
     | 'custom'
     | 'all';
 
+export type DietFilter = DietType | string; // string allows for MongoDB ObjectId category IDs
+
 export interface DietPlan {
     id: string;
     _id: string;
@@ -46,22 +48,42 @@ export interface UseDietsByTypeResult {
 }
 
 // ============ MAIN HOOK ============
-export function useDietsByType(type: DietType): UseDietsByTypeResult {
+export function useDietsByType(filter: DietFilter): UseDietsByTypeResult {
     const [diets, setDiets] = useState<DietPlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchDiets = useCallback(async () => {
         try {
             setIsLoading(true);
-            const fetchedDiets = await plansService.getDietsByType(type);
+            console.log('[useDietsByType] Fetching diets for filter:', filter);
+
+            // Check if this looks like a MongoDB ObjectId (24 hex characters)
+            const isObjectId = /^[0-9a-fA-F]{24}$/.test(filter);
+            console.log('[useDietsByType] Is ObjectId:', isObjectId);
+
+            let fetchedDiets;
+            if (isObjectId) {
+                // Use categoryId for MongoDB ObjectIds
+                console.log('[useDietsByType] Calling getDietsByCategory with filter:', filter);
+                fetchedDiets = await plansService.getDietsByCategory(filter);
+                console.log('[useDietsByType] Fetched diets by category:', fetchedDiets?.length || 0);
+                console.log('[useDietsByType] Fetched diets data:', JSON.stringify(fetchedDiets, null, 2));
+            } else {
+                // Use type for predefined diet types
+                console.log('[useDietsByType] Calling getDietsByType with filter:', filter);
+                fetchedDiets = await plansService.getDietsByType(filter as DietType);
+                console.log('[useDietsByType] Fetched diets by type:', fetchedDiets?.length || 0);
+                console.log('[useDietsByType] Fetched diets data:', JSON.stringify(fetchedDiets, null, 2));
+            }
+
             setDiets(fetchedDiets as DietPlan[]);
         } catch (error) {
-            console.error('Error fetching diets by type:', error);
+            console.error('Error fetching diets by filter:', error);
             setDiets([]);
         } finally {
             setIsLoading(false);
         }
-    }, [type]);
+    }, [filter]);
 
     useEffect(() => {
         fetchDiets();

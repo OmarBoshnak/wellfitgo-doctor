@@ -1,13 +1,6 @@
 import api from './api/client';
 import { Config } from '@/src/core/constants/Config';
-import {
-    MOCK_ACTIVE_PLANS,
-    MOCK_ASSIGNMENT_CLIENTS,
-    MOCK_DIET_CATEGORIES,
-    MOCK_DIET_PLANS,
-    MOCK_DIET_PROGRAMS,
-    MOCK_DRAFT_PLANS
-} from '../../features/meals/data/mockData';
+
 
 // Types
 export interface DoctorPlanItem {
@@ -17,18 +10,25 @@ export interface DoctorPlanItem {
     avatar: string | null;
     clientGoal: "weight_loss" | "maintain" | "gain_muscle";
     dietProgram: string;
+    dietProgramId?: string;
     daysLeft: number;
     weekNumber: number;
+    totalWeeks?: number;
     startDate: string;
+    endDate?: string;
     mealsCompleted: number;
     totalMeals: number;
     weightChange: number;
+    targetWeightChange?: number;
     status: "good" | "warning" | "paused";
     statusMessage: string | null;
     missedMeals: number;
     weekStartDate: string;
     weekEndDate: string;
     planStatus: string;
+    completionRate?: number;
+    lastActivity?: string;
+    streakDays?: number;
 }
 
 export interface DraftPlanItem {
@@ -140,48 +140,162 @@ export interface ClientMealPlan {
     createdAt: number;
 }
 
-// Temporary flag to force mock usage until backend is ready
-const USE_MOCK_DATA = false;
+// Enhanced Progress Tracking Types
+export interface MealLog {
+    id: string;
+    name: string;
+    nameAr: string;
+    time: string;
+    isCompleted: boolean;
+    completedAt?: number;
+    imageUrl?: string;
+    calories?: number;
+    macros?: {
+        protein: number;
+        carbs: number;
+        fat: number;
+    };
+}
+
+export interface DailyMealLog {
+    date: string;
+    meals: MealLog[];
+    completionRate: number;
+    totalCalories?: number;
+    totalMacros?: {
+        protein: number;
+        carbs: number;
+        fat: number;
+    };
+}
+
+export interface ClientProgressDetails {
+    plan: {
+        id: string;
+        name: string;
+        nameAr?: string;
+        emoji?: string;
+        startDate: string;
+        endDate?: string;
+        currentWeek: number;
+        totalWeeks: number;
+        targetCalories?: number;
+    };
+    weeklyStats: {
+        completedMeals: number;
+        totalMeals: number;
+        completionRate: number;
+        streakDays: number;
+        averageCalories?: number;
+    };
+    dailyProgress: DailyMealLog[];
+    lastUpdated: string;
+}
+
+export interface WeeklyProgressSummary {
+    weekStartDate: string;
+    weekEndDate: string;
+    totalDays: number;
+    completedDays: number;
+    totalMeals: number;
+    completedMeals: number;
+    completionRate: number;
+    averageDailyCompletion: number;
+    streakDays: number;
+    bestDay: string;
+    worstDay: string;
+    nutritionalSummary?: {
+        averageCalories: number;
+        averageMacros: {
+            protein: number;
+            carbs: number;
+            fat: number;
+        };
+    };
+}
+
+export interface ClientAnalytics {
+    timeframe: 'week' | 'month' | 'all';
+    overallStats: {
+        totalMeals: number;
+        completedMeals: number;
+        missedMeals: number;
+        completionRate: number;
+        streakDays: number;
+        longestStreak: number;
+    };
+    weeklyBreakdown: Array<{
+        week: string;
+        completionRate: number;
+        totalMeals: number;
+        completedMeals: number;
+    }>;
+    trends: {
+        improving: boolean;
+        trendDirection: 'up' | 'down' | 'stable';
+        trendPercentage: number;
+    };
+    nutritionalTrends?: Array<{
+        date: string;
+        calories: number;
+        macros: {
+            protein: number;
+            carbs: number;
+            fat: number;
+        };
+    }>;
+    achievements: Array<{
+        id: string;
+        type: string;
+        description: string;
+        achievedAt: string;
+    }>;
+}
+
+// Mock data logic removed
+
 
 export const plansService = {
     // Queries
     async getActivePlans(): Promise<DoctorPlanItem[]> {
-        if (USE_MOCK_DATA) return MOCK_ACTIVE_PLANS;
-
         try {
+            console.log('[plansService] Fetching active plans...');
             const response = await api.get('/doctors/plans/active');
+            console.log('[plansService] Active plans response:', response.status);
             if (response.data.success) {
+                console.log('[plansService] Active plans loaded:', response.data.data?.length || 0);
                 return response.data.data;
             }
             throw new Error(response.data.message || 'Failed to fetch active plans');
         } catch (error: any) {
-            // Fallback to mock on 404
-            if (error.response && error.response.status === 404) {
-                console.warn("Backend endpoint not found, falling back to mock data");
-                return MOCK_ACTIVE_PLANS;
+            console.error('[plansService] Error fetching active plans:', error);
+            if (error.code === 'NETWORK_ERROR' || !error.response) {
+                error.code = 'NETWORK_ERROR';
             }
-            throw error;
+            return [];
         }
     },
 
     async getDraftPlans(): Promise<DraftPlanItem[]> {
-        if (USE_MOCK_DATA) return MOCK_DRAFT_PLANS;
-
         try {
+            console.log('[plansService] Fetching draft plans...');
             const response = await api.get('/doctors/plans/drafts');
+            console.log('[plansService] Draft plans response:', response.status);
             if (response.data.success) {
+                console.log('[plansService] Draft plans loaded:', response.data.data?.length || 0);
                 return response.data.data;
             }
             throw new Error(response.data.message || 'Failed to fetch draft plans');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return MOCK_DRAFT_PLANS;
-            throw error;
+            console.error('[plansService] Error fetching draft plans:', error);
+            if (error.code === 'NETWORK_ERROR' || !error.response) {
+                error.code = 'NETWORK_ERROR';
+            }
+            return [];
         }
     },
 
     async getClientsForAssignment(): Promise<AssignmentClient[]> {
-        if (USE_MOCK_DATA) return MOCK_ASSIGNMENT_CLIENTS;
-
         try {
             const response = await api.get('/doctors/plans/clients/assignment');
             if (response.data.success) {
@@ -189,29 +303,47 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to fetch clients for assignment');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return MOCK_ASSIGNMENT_CLIENTS;
+            console.error('Error fetching clients for assignment:', error);
+            return [];
+        }
+    },
+
+    async assignDietToClients(dietId: string, clientIds: string[], settings: { startDate: string; durationWeeks: number | null; notifyPush: boolean }): Promise<boolean> {
+        try {
+            const response = await api.post('/doctors/plans/assign', {
+                dietId,
+                clientIds,
+                ...settings
+            });
+            if (response.data.success) {
+                return true;
+            }
+            throw new Error(response.data.message || 'Failed to assign diet plan');
+        } catch (error: any) {
+            console.error('Error assigning diet plan:', error);
             throw error;
         }
     },
 
     async getDietPrograms(): Promise<DietProgramItem[]> {
-        if (USE_MOCK_DATA) return MOCK_DIET_PROGRAMS;
-
         try {
+            console.log('[plansService] Fetching diet programs...');
             const response = await api.get('/doctors/plans/programs');
             if (response.data.success) {
+                console.log('[plansService] Diet programs loaded:', response.data.data?.length || 0);
                 return response.data.data;
             }
             throw new Error(response.data.message || 'Failed to fetch diet programs');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return MOCK_DIET_PROGRAMS;
-            throw error;
+            console.error('[plansService] Error fetching diet programs:', error);
+            if (error.code === 'NETWORK_ERROR' || !error.response) {
+                error.code = 'NETWORK_ERROR';
+            }
+            return [];
         }
     },
 
     async getDietCategories(): Promise<DietCategoryItem[]> {
-        if (USE_MOCK_DATA) return MOCK_DIET_CATEGORIES as unknown as DietCategoryItem[];
-
         try {
             const response = await api.get('/doctors/plans/categories');
             if (response.data.success) {
@@ -219,29 +351,55 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to fetch diet categories');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return MOCK_DIET_CATEGORIES as unknown as DietCategoryItem[];
-            throw error;
+            console.error('Error fetching diet categories:', error);
+            return [];
         }
     },
 
     async getDietsByType(type: string): Promise<any[]> {
-        if (USE_MOCK_DATA) return MOCK_DIET_PLANS.filter(p => type === 'all' || p.type === type);
-
         try {
-            const response = await api.get(`/doctors/plans/programs?type=${type}`);
+            // Check if this looks like a MongoDB ObjectId (24 hex characters)
+            const isObjectId = /^[0-9a-fA-F]{24}$/.test(type);
+
+            // Use categoryId if it's an ObjectId, otherwise use type
+            const url = isObjectId
+                ? `/doctors/plans/programs?categoryId=${type}`
+                : `/doctors/plans/programs?type=${type}`;
+
+            const response = await api.get(url);
             if (response.data.success) {
                 return response.data.data;
             }
             throw new Error(response.data.message || 'Failed to fetch diets by type');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return MOCK_DIET_PLANS.filter(p => type === 'all' || p.type === type);
-            throw error;
+            console.error('Error fetching diets by type:', error);
+            return [];
+        }
+    },
+
+    async getDietsByCategory(categoryId: string): Promise<any[]> {
+        try {
+            console.log('[plansService] Getting diets by category ID:', categoryId);
+            const url = `/doctors/plans/programs?categoryId=${categoryId}`;
+            console.log('[plansService] Full URL:', url);
+
+            const response = await api.get(url);
+            console.log('[plansService] API Response:', response.data);
+
+            if (response.data.success) {
+                console.log('[plansService] Diets found:', response.data.data?.length || 0);
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch diets by category');
+        } catch (error: any) {
+            console.error('[plansService] Error fetching diets by category:', error);
+            console.error('[plansService] Response status:', error.response?.status);
+            console.error('[plansService] Response data:', error.response?.data);
+            return [];
         }
     },
 
     async getDietPlan(id: string): Promise<any> {
-        if (USE_MOCK_DATA) return MOCK_DIET_PLANS.find(p => p.id === id || p._id === id);
-
         try {
             const response = await api.get(`/doctors/plans/programs/${id}`);
             if (response.data.success) {
@@ -249,21 +407,12 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to fetch diet plan');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return MOCK_DIET_PLANS.find(p => p.id === id || p._id === id);
+            console.error('Error fetching diet plan:', error);
             throw error;
         }
     },
 
     async searchDietPlans(query: string): Promise<any[]> {
-        if (USE_MOCK_DATA) {
-            const lowerQuery = query.toLowerCase();
-            return MOCK_DIET_PLANS.filter(p =>
-                p.name.toLowerCase().includes(lowerQuery) ||
-                (p.nameAr && p.nameAr.toLowerCase().includes(lowerQuery)) ||
-                (p.description && p.description.toLowerCase().includes(lowerQuery))
-            );
-        }
-
         try {
             const response = await api.get(`/doctors/plans/programs/search?q=${encodeURIComponent(query)}`);
             if (response.data.success) {
@@ -271,22 +420,13 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to search diet plans');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) {
-                const lowerQuery = query.toLowerCase();
-                return MOCK_DIET_PLANS.filter(p =>
-                    p.name.toLowerCase().includes(lowerQuery) ||
-                    (p.nameAr && p.nameAr.toLowerCase().includes(lowerQuery)) ||
-                    (p.description && p.description.toLowerCase().includes(lowerQuery))
-                );
-            }
-            throw error;
+            console.error('Error searching diet plans:', error);
+            return [];
         }
     },
 
     // Mutations
     async createDietPlan(args: CreateDietPlanArgs): Promise<{ id: string }> {
-        if (USE_MOCK_DATA) return {id: 'mock_plan_' + Date.now()};
-
         try {
             const response = await api.post('/doctors/plans', args);
             if (response.data.success) {
@@ -294,14 +434,12 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to create diet plan');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return {id: 'mock_plan_' + Date.now()};
+            console.error('Error creating diet plan:', error);
             throw error;
         }
     },
 
     async updateDietPlan(args: UpdateDietPlanArgs): Promise<boolean> {
-        if (USE_MOCK_DATA) return true;
-
         try {
             const response = await api.put(`/doctors/plans/${args.id}`, args);
             if (response.data.success) {
@@ -309,14 +447,12 @@ export const plansService = {
             }
             throw new Error(response.data.message || 'Failed to update diet plan');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) return true;
+            console.error('Error updating diet plan:', error);
             throw error;
         }
     },
 
     async deleteDietPlan(id: string): Promise<boolean> {
-        if (USE_MOCK_DATA) return true;
-
         const response = await api.delete(`/doctors/plans/${id}`);
         if (response.data.success) {
             return true;
@@ -325,8 +461,6 @@ export const plansService = {
     },
 
     async createWeeklyPlan(args: CreateWeeklyPlanArgs): Promise<{ id: string }> {
-        if (USE_MOCK_DATA) return {id: 'mock_weekly_' + Date.now()};
-
         const response = await api.post('/doctors/plans/weekly', args);
         if (response.data.success) {
             return response.data.data;
@@ -335,8 +469,6 @@ export const plansService = {
     },
 
     async updateWeeklyPlan(args: UpdateWeeklyPlanArgs): Promise<boolean> {
-        if (USE_MOCK_DATA) return true;
-
         const response = await api.put(`/doctors/plans/weekly/${args.id}`, args);
         if (response.data.success) {
             return true;
@@ -345,8 +477,6 @@ export const plansService = {
     },
 
     async createDietCategory(args: CreateDietCategoryArgs): Promise<{ id: string }> {
-        if (USE_MOCK_DATA) return {id: 'mock_cat_' + Date.now()};
-
         const response = await api.post('/doctors/plans/categories', args);
         if (response.data.success) {
             return response.data.data;
@@ -355,8 +485,6 @@ export const plansService = {
     },
 
     async deleteDietCategory(id: string): Promise<boolean> {
-        if (USE_MOCK_DATA) return true;
-
         const response = await api.delete(`/doctors/plans/categories/${id}`);
         if (response.data.success) {
             return true;
@@ -365,8 +493,6 @@ export const plansService = {
     },
 
     async updateDietCategory(id: string, args: Partial<CreateDietCategoryArgs>): Promise<boolean> {
-        if (USE_MOCK_DATA) return true;
-
         const response = await api.put(`/doctors/plans/categories/${id}`, args);
         if (response.data.success) {
             return true;
@@ -379,7 +505,7 @@ export const plansService = {
         try {
             console.log(`[PlansService] Fetching meal plans for client: ${clientId}`);
             console.log(`[PlansService] Full URL: ${Config.API_URL}/doctors/clients/${clientId}/meal-plans`);
-            
+
             const response = await api.get(`/doctors/clients/${clientId}/meal-plans`);
             if (response.data.success) {
                 return response.data.data;
@@ -403,6 +529,72 @@ export const plansService = {
             throw new Error(response.data.message || 'Failed to delete meal plan');
         } catch (error: any) {
             console.error('[PlansService] Error deleting meal plan:', error);
+            throw error;
+        }
+    },
+
+    // Enhanced Progress Tracking Methods
+    async getClientProgressDetails(clientId: string, planId: string): Promise<ClientProgressDetails> {
+        try {
+            const response = await api.get(`/doctors/clients/${clientId}/plans/${planId}/progress`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch client progress details');
+        } catch (error: any) {
+            console.error('[PlansService] Error fetching client progress details:', error);
+            throw error;
+        }
+    },
+
+    async getDailyMealLogs(clientId: string, date: string): Promise<DailyMealLog[]> {
+        try {
+            const response = await api.get(`/doctors/clients/${clientId}/meal-logs?date=${date}`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch daily meal logs');
+        } catch (error: any) {
+            console.error('[PlansService] Error fetching daily meal logs:', error);
+            throw error;
+        }
+    },
+
+    async getWeeklyProgressSummary(clientId: string, weekStartDate: string): Promise<WeeklyProgressSummary> {
+        try {
+            const response = await api.get(`/doctors/clients/${clientId}/progress/weekly?startDate=${weekStartDate}`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch weekly progress summary');
+        } catch (error: any) {
+            console.error('[PlansService] Error fetching weekly progress summary:', error);
+            throw error;
+        }
+    },
+
+    async getClientAnalytics(clientId: string, planId: string, timeframe: 'week' | 'month' | 'all'): Promise<ClientAnalytics> {
+        try {
+            const response = await api.get(`/doctors/clients/${clientId}/analytics?planId=${planId}&timeframe=${timeframe}`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            throw new Error(response.data.message || 'Failed to fetch client analytics');
+        } catch (error: any) {
+            console.error('[PlansService] Error fetching client analytics:', error);
+            throw error;
+        }
+    },
+
+    async sendClientReminder(clientId: string, reminderType: 'general' | 'missed_meals' | 'milestone'): Promise<boolean> {
+        try {
+            const response = await api.post(`/doctors/clients/${clientId}/reminders`, { reminderType });
+            if (response.data.success) {
+                return true;
+            }
+            throw new Error(response.data.message || 'Failed to send client reminder');
+        } catch (error: any) {
+            console.error('[PlansService] Error sending client reminder:', error);
             throw error;
         }
     }

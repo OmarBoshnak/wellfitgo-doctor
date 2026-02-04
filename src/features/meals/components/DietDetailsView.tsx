@@ -5,7 +5,9 @@ import { ArrowLeft, ArrowRight, Share2, MoreVertical, ChevronRight, ChevronDown,
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { useDietDetails } from '../hooks/useDietDetails';
 import { usePlanMutations } from '../hooks/usePlanMutations';
+import { plansService } from '@/src/shared/services';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import AssignClientModal from './AssignClientModal';
 import { isRTL } from '@/src/core/constants/translation';
 import { colors, gradients } from '@/src/core/constants/Theme';
@@ -79,6 +81,7 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
     const { plan, isLoading } = useDietDetails(dietId);
     const { deleteDietPlan } = usePlanMutations();
     const insets = useSafeAreaInsets();
+    const router = useRouter();
 
     // State for daily format
     const [selectedDay, setSelectedDay] = useState<WeekDay>(getCurrentWeekday());
@@ -103,9 +106,9 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
 
         setIsAssigning(true);
         try {
-            // Mock assignment simulation
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            console.log('Mock: Assigned plan', dietId, 'to clients:', clientIds, 'settings:', settings);
+            // Use real backend service
+            await plansService.assignDietToClients(dietId, clientIds, settings);
+            console.log('Assigned plan', dietId, 'to clients:', clientIds, 'settings:', settings);
 
             setShowAssignModal(false);
 
@@ -116,11 +119,17 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
             });
             setShowSuccessModal(true);
         } catch (error) {
+            console.error('Assignment failed:', error);
             Alert.alert(t.assignFailed, String(error));
         } finally {
             setIsAssigning(false);
         }
     }, [dietId]);
+
+    // Handle viewing client profile
+    const handleViewClient = useCallback((clientId: string) => {
+        router.push(`/doctor/client-profile?id=${clientId}`);
+    }, [router]);
 
     // ============ DELETE HANDLER ============
     const handleDelete = useCallback(async () => {
@@ -187,8 +196,9 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
 
     // ============ RENDER HELPERS ============
     const BackArrow = () => isRTL
-        ? <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />
-        : <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />;
+        ? <ArrowRight size={horizontalScale(24)} color={colors.textPrimary} />
+        :
+        <ArrowLeft size={horizontalScale(24)} color={colors.textPrimary} />;
 
     const toggleMeal = (mealId: string) => {
         setExpandedMeal(expandedMeal === mealId ? null : mealId);
@@ -216,17 +226,17 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
 
     const renderCategory = (category: MealCategory, index: number) => (
         <View style={styles.categoryBlock} key={`${category.name}-${index}`}>
-            <View style={[styles.categoryHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                <Text style={styles.categoryEmoji}>{category.emoji || '📋'}</Text>
+            <View style={[styles.categoryHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Text style={styles.categoryTitle}>
                     {isRTL ? (category.nameAr || category.name) : category.name}
                 </Text>
+                <Text style={styles.categoryEmoji}>{category.emoji || '📋'}</Text>
             </View>
             <View style={styles.itemsList}>
                 {category.items.map((item, idx) => (
                     <View key={`${idx}`} style={[styles.itemRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <Text style={[styles.itemText, { textAlign: isRTL ? 'right' : 'left' }]}>{item}</Text>
                         <View style={styles.bulletPoint} />
-                        <Text style={[styles.itemText, { textAlign: isRTL ? 'left' : 'right' }]}>{item}</Text>
                     </View>
                 ))}
             </View>
@@ -238,23 +248,24 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
 
         return (
             <View key={meal.id || index} style={[styles.mealCard, isExpanded && styles.mealCardExpanded]}>
-                <TouchableOpacity
+                                <TouchableOpacity
                     style={[styles.mealHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
                     onPress={() => toggleMeal(meal.id)}
                     activeOpacity={0.7}
                 >
-                    <View style={[styles.mealHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.mealEmoji}>{meal.emoji || '🍽️'}</Text>
-                        <Text style={styles.mealName}>
-                            {isRTL ? (meal.nameAr || meal.name) : meal.name}
-                            {meal.nameAr && !isRTL && ` (${meal.nameAr})`}
-                        </Text>
-                    </View>
-                    {isExpanded ? (
+                                        {isExpanded ? (
                         <ChevronDown size={horizontalScale(22)} color={colors.primaryDark} />
                     ) : (
                         <ChevronRight size={horizontalScale(22)} color={colors.textSecondary} />
                     )}
+
+                    <View style={[styles.mealHeaderLeft, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                        <Text style={styles.mealName}>
+                            {isRTL ? (meal.nameAr || meal.name) : meal.name}
+                            {meal.nameAr && !isRTL && ` (${meal.nameAr})`}
+                        </Text>
+                        <Text style={styles.mealEmoji}>{meal.emoji || '🍽️'}</Text>
+                    </View>
                 </TouchableOpacity>
 
                 {isExpanded && (
@@ -272,7 +283,7 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={[styles.daySelectorRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
         >
-            {WEEKDAYS.map((day) => {
+            {(isRTL ? [...WEEKDAYS].reverse() : WEEKDAYS).map((day) => {
                 const isSelected = selectedDay === day;
                 const label = isRTL ? DAY_LABELS[day].ar : DAY_LABELS[day].en;
 
@@ -342,37 +353,40 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
     return (
         <SafeAreaView edges={['left', 'right']} style={styles.container}>
             {/* Header */}
-            <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row', paddingTop: insets.top }]}>
-                <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-                    <BackArrow />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                    {plan.name}
-                </Text>
-
-                {/* Delete Button */}
+            <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse', paddingTop: insets.top }]}>
+                                {/* Delete Button */}
                 <TouchableOpacity
                     onPress={handleDelete}
                     style={[styles.headerButton, { backgroundColor: 'rgba(235, 87, 87, 0.1)' }]}
                 >
                     <Trash2 size={horizontalScale(20)} color="#EB5757" />
                 </TouchableOpacity>
+
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                    {plan.name}
+                </Text>
+
+
+                <TouchableOpacity onPress={onBack} style={styles.headerButton}>
+                    <BackArrow />
+                </TouchableOpacity>
+
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                 {/* Summary Card */}
                 <View style={styles.summaryCard}>
                     <View style={[styles.summaryHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <View style={styles.emojiCircle}>
-                            <Text style={styles.summaryEmoji}>{plan.emoji || '🥗'}</Text>
-                        </View>
-                        <View style={{ flex: 1, alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
+                        <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                             <Text style={styles.summaryTitle}>{plan.name}</Text>
                             {plan.targetCalories && (
                                 <Text style={styles.summaryCalories}>
                                     🔥 {plan.targetCalories} {t.caloriesDay}
                                 </Text>
                             )}
+                        </View>
+                        <View style={styles.emojiCircle}>
+                            <Text style={styles.summaryEmoji}>{plan.emoji || '🥗'}</Text>
                         </View>
                     </View>
 
@@ -395,12 +409,12 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
                     )}
 
                     {/* Meta Info */}
-                    <View style={[styles.metaRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    <View style={[styles.metaRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                         <View style={[styles.metaItem, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                            <Users size={horizontalScale(14)} color={colors.textSecondary} />
                             <Text style={styles.metaText}>
                                 {t.assignedTo} {plan.usageCount} {t.clients}
                             </Text>
+                            <Users size={horizontalScale(14)} color={colors.textSecondary} />
                         </View>
                         {plan.createdAt && (
                             <View style={[styles.metaItem, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
@@ -418,12 +432,13 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
 
                 {/* Daily Meals Section */}
                 <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                    <Text style={styles.sectionTitle}>
-                        {plan.format === 'daily' ? t.weeklyMeals : t.dailyMeals}
-                    </Text>
                     <Text style={styles.sectionSubtitle}>
                         {mealsForUI.length} {t.mealsIncluded}
                     </Text>
+                                        <Text style={styles.sectionTitle}>
+                        {plan.format === 'daily' ? t.weeklyMeals : t.dailyMeals}
+                    </Text>
+
                 </View>
 
                 {/* Meal Accordions */}
@@ -457,6 +472,7 @@ export default function DietDetailsView({ dietId, onBack, onAssign }: Props) {
                 }}
                 onClose={() => setShowAssignModal(false)}
                 onAssign={handleAssignToClients}
+                onViewClient={handleViewClient}
                 isAssigning={isAssigning}
             />
 

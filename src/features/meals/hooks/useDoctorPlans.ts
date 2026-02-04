@@ -22,18 +22,25 @@ export interface DoctorPlanItem {
     avatar: string | null;
     clientGoal: "weight_loss" | "maintain" | "gain_muscle";
     dietProgram: string;
+    dietProgramId?: string;
     daysLeft: number;
     weekNumber: number;
+    totalWeeks?: number;
     startDate: string;
+    endDate?: string;
     mealsCompleted: number;
     totalMeals: number;
     weightChange: number;
+    targetWeightChange?: number;
     status: "good" | "warning" | "paused";
     statusMessage: string | null;
     missedMeals: number;
     weekStartDate: string;
     weekEndDate: string;
     planStatus: string;
+    completionRate?: number;
+    lastActivity?: string;
+    streakDays?: number;
 }
 
 /**
@@ -89,6 +96,7 @@ export function useDoctorPlans() {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>('');
 
     const load = useCallback(async (isRefresh = false) => {
         console.log('[useDoctorPlans] Starting load (Backend), isRefresh:', isRefresh);
@@ -99,6 +107,7 @@ export function useDoctorPlans() {
             setIsLoading(true);
         }
         setHasError(false);
+        setErrorMessage('');
 
         try {
             const [
@@ -118,9 +127,20 @@ export function useDoctorPlans() {
             setClientsForAssignment(fetchedClients as unknown as AssignmentClient[]);
             setDietPrograms(fetchedDietPrograms as unknown as DietProgramItem[]);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("[useDoctorPlans] Error:", error);
             setHasError(true);
+            
+            // Categorize error type
+            if (error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error')) {
+                setErrorMessage('Network connection failed. Please check your internet connection.');
+            } else if (error.response?.status === 401) {
+                setErrorMessage('Authentication failed. Please log in again.');
+            } else if (error.response?.status === 500) {
+                setErrorMessage('Server error. Please try again later.');
+            } else {
+                setErrorMessage('Failed to load plans. Please try again.');
+            }
         } finally {
             console.log('[useDoctorPlans] Load complete');
             setIsLoading(false);
@@ -144,6 +164,7 @@ export function useDoctorPlans() {
         isLoading,
         isRefreshing,
         hasError,
+        errorMessage,
         activePlansCount: activePlans.length,
         draftPlansCount: draftPlans.length,
         refetch,

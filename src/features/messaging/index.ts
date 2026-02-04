@@ -13,6 +13,7 @@ export { default as EmptyState } from './components/EmptyState';
 
 // Hooks
 export * from './hooks/useMessaging';
+export { useUnreadCount } from './hooks/useMessaging';
 
 // Types
 export type { ChatMessage, ChatConversation } from './components/types';
