@@ -12,11 +12,14 @@ export interface ChatMessage {
     audioUri?: string;
     audioDuration?: number; // milliseconds
     replyToId?: string; // ID of the message being replied to
+    replyToContent?: string; // Content of the replied message
+    replyToSenderId?: string; // Sender ID of the replied message
+    replyToSenderRole?: 'doctor' | 'client'; // Role of the replied message sender
     replyTo?: {
         id: string;
         content: string;
         sender: 'me' | 'client';
-    }; // Preview of replied message
+    }; // Preview of replied message (legacy)
 }
 
 export interface ChatConversation {

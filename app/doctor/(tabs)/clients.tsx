@@ -56,6 +56,7 @@ const t = {
     sendReminder: isRTL ? 'إرسال تذكير' : 'Send Reminder',
     noClients: isRTL ? 'لا يوجد عملاء' : 'No clients',
     noClientsSubtext: isRTL ? 'لم يتم العثور على عملاء لهذا اليوم' : 'No clients found for this day',
+    reminderTime: isRTL ? 'وقت التذكير' : 'Reminder time',
 };
 
 
@@ -110,6 +111,19 @@ export default function ClientsScreen() {
         return days[new Date().getDay()];
     };
     const todayDay = getCurrentDay();
+
+    const formatCheckinTime = (time?: string) => {
+        if (!time) return '';
+        const [hours, minutes] = time.split(':').map(Number);
+        if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+            return time;
+        }
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        return `${displayHours.toString().padStart(2, '0')}:${minutes
+            .toString()
+            .padStart(2, '0')} ${ampm}`;
+    };
 
     // Fetch clients using Convex hook
     const {
@@ -231,6 +245,14 @@ export default function ClientsScreen() {
                                 <Text style={styles.clientName}>{client.name}</Text>
                             </View>
                             <Text style={styles.clientEmail}>{client.email}</Text>
+                            {client.weeklyCheckinEnabled && client.weeklyCheckinTime && (
+                                <View style={styles.reminderRow}>
+                                    <Clock size={horizontalScale(14)} color={colors.textSecondary} />
+                                    <Text style={styles.reminderText}>
+                                        {t.reminderTime} {formatCheckinTime(client.weeklyCheckinTime)}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                         <View style={styles.avatarContainer}>
                             {client.avatar ? (
@@ -619,6 +641,17 @@ const styles = StyleSheet.create({
     clientEmail: {
         fontSize: ScaleFontSize(13),
         color: colors.textSecondary,
+    },
+    reminderRow: {
+        flexDirection: isRTL ? 'row-reverse' : 'row',
+        alignItems: 'center',
+        gap: horizontalScale(6),
+        marginTop: verticalScale(4),
+    },
+    reminderText: {
+        fontSize: ScaleFontSize(12),
+        color: colors.textSecondary,
+        fontWeight: '600',
     },
     // Status Badge
     statusBadge: {

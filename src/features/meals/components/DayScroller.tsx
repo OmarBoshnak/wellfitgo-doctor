@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     scrollContentRTL: {
-        flexDirection: 'row-reverse',
+        flexDirection: 'row',
     },
     weekSeparator: {
         flexDirection: 'row',

@@ -3,6 +3,54 @@ import { ChatMessage, ChatConversation } from '../components/types';
 import { messagingService, Message, Conversation } from '@/src/shared/services/messaging.service';
 import { SocketService } from '@/src/shared/services/socket/socket.service';
 
+// Transformation function to convert backend Message to ChatMessage
+// Format timestamp to Arabic locale time string
+const formatTimestamp = (dateString: string): string => {
+    try {
+        return new Date(dateString).toLocaleTimeString('ar-EG', {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    } catch {
+        return '';
+    }
+};
+
+const transformMessage = (backendMessage: Message, currentUserId?: string): ChatMessage => {
+    const isMe = backendMessage.senderId === currentUserId || backendMessage.senderRole === 'doctor';
+    
+    // Create replyTo object for legacy compatibility
+    const replyTo = backendMessage.replyToId && backendMessage.replyToContent ? {
+        id: backendMessage.replyToId,
+        content: backendMessage.replyToContent,
+        sender: (backendMessage.replyToSenderRole === 'doctor' ? 'me' : 'client') as 'me' | 'client',
+    } : undefined;
+
+    return {
+        id: backendMessage._id,
+        type: backendMessage.messageType === 'voice' ? 'audio' : 
+              backendMessage.messageType === 'text' ? 'text' : 
+              backendMessage.messageType as any,
+        sender: isMe ? 'me' : 'client',
+        senderId: backendMessage.senderId,
+        content: backendMessage.content,
+        timestamp: formatTimestamp(backendMessage.createdAt),
+        status: backendMessage.isDeleted ? 'deleted' : 
+                backendMessage.isEdited ? 'edited' :
+                (backendMessage as any).isReadByClient ? 'read' :
+                'sent',
+        isEdited: backendMessage.isEdited,
+        isDeleted: backendMessage.isDeleted,
+        audioUri: backendMessage.mediaUrl,
+        audioDuration: backendMessage.mediaDuration,
+        replyToId: backendMessage.replyToId,
+        replyToContent: backendMessage.replyToContent,
+        replyToSenderId: backendMessage.replyToSenderId,
+        replyToSenderRole: backendMessage.replyToSenderRole,
+        replyTo,
+    };
+};
+
 export type InboxFilter = 'all' | 'unread' | 'favorites' | 'archived';
 
 interface CoachInboxStats {
@@ -10,27 +58,8 @@ interface CoachInboxStats {
     totalActive: number;
 }
 
-// Internal Message type for hook state
-type InternalMessage = {
-    _id: string;
-    conversationId: string;
-    senderId: string;
-    senderRole?: string;
-    content: string;
-    messageType?: string;
-    mediaUrl?: string;
-    mediaDuration?: number;
-    clientTempId?: string;
-    isDeleted?: boolean;
-    isEdited?: boolean;
-    isReadByClient?: boolean;
-    isReadByDoctor?: boolean;
-    createdAt: string;
-    optimistic?: boolean;
-};
-
 export function useMessages(conversationId?: string, currentUserId?: string) {
-    const [messages, setMessages] = useState<InternalMessage[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -52,7 +81,8 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
             try {
                 // Initial load: fetch only last 15 messages
                 const response = await messagingService.getMessages(conversationId, undefined, 15);
-                setMessages(response.messages);
+                const transformedMessages = response.messages.map(msg => transformMessage(msg, currentUserId));
+                setMessages(transformedMessages);
                 setNextCursor(response.nextCursor);
                 setHasMoreMessages(response.nextCursor !== null);
             } catch (err) {
@@ -68,24 +98,25 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         // Subscribe to real-time updates
         SocketService.joinConversation(conversationId);
 
-        const handleNewMessage = (message: any) => {
+        const handleNewMessage = (message: Message) => {
             if (message.conversationId === conversationId) {
+                const transformedMessage = transformMessage(message, currentUserId);
                 setMessages((prev) => {
                     // Check if message already exists (avoid duplicates)
-                    const exists = prev.some((m) => m._id === message._id);
+                    const exists = prev.some((m) => m.id === transformedMessage.id);
                     if (exists) return prev;
 
                     // Replace optimistic message if clientTempId matches
                     if (message.clientTempId) {
-                        const optimisticIndex = prev.findIndex((m) => m._id === message.clientTempId);
+                        const optimisticIndex = prev.findIndex((m) => m.id === message.clientTempId);
                         if (optimisticIndex !== -1) {
                             const next = [...prev];
-                            next[optimisticIndex] = message;
+                            next[optimisticIndex] = transformedMessage;
                             return next;
                         }
                     }
 
-                    return [...prev, message];
+                    return [...prev, transformedMessage];
                 });
             }
         };
@@ -94,7 +125,7 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
             if (data.conversationId === conversationId) {
                 setMessages((prev) =>
                     prev.map((m) =>
-                        m._id === data.messageId
+                        m.id === data.messageId
                             ? { ...m, content: data.content, isEdited: true }
                             : m
                     )
@@ -106,7 +137,7 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
             if (data.conversationId === conversationId) {
                 setMessages((prev) =>
                     prev.map((m) =>
-                        m._id === data.messageId
+                        m.id === data.messageId
                             ? { ...m, isDeleted: true, content: 'تم حذف هذه الرسالة' }
                             : m
                     )
@@ -135,19 +166,18 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         }) => {
             if (!conversationId) return null;
             const tempId = `temp-${Date.now()}`;
-            const newMsg: InternalMessage = {
-                _id: tempId,
-                conversationId,
+            const newMsg: ChatMessage = {
+                id: tempId,
+                type: (data.messageType === 'voice' ? 'audio' : data.messageType || 'text') as any,
+                sender: 'me',
                 senderId: currentUserId || 'me',
-                senderRole: 'doctor',
                 content: data.content,
-                messageType: data.messageType || 'text',
-                mediaUrl: data.mediaUrl,
-                mediaDuration: data.mediaDuration,
-                isDeleted: false,
+                timestamp: new Date().toISOString(),
+                status: 'sending',
                 isEdited: false,
-                createdAt: new Date().toISOString(),
-                optimistic: true,
+                isDeleted: false,
+                audioUri: data.mediaUrl,
+                audioDuration: data.mediaDuration,
             };
             setMessages((prev) => [...prev, newMsg]);
             return tempId;
@@ -155,18 +185,19 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         [conversationId, currentUserId]
     );
 
-    const replaceOptimisticMessage = useCallback((tempId: string | null, realMessage?: InternalMessage) => {
+    const replaceOptimisticMessage = useCallback((tempId: string | null, realMessage?: Message) => {
         if (!tempId || !realMessage) return;
-        setMessages((prev) => prev.map((m) => (m._id === tempId ? realMessage : m)));
-    }, []);
+        const transformedRealMessage = transformMessage(realMessage, currentUserId);
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? transformedRealMessage : m)));
+    }, [currentUserId]);
 
     const removeOptimisticMessage = useCallback((tempId: string | null) => {
         if (!tempId) return;
-        setMessages((prev) => prev.filter((m) => m._id !== tempId));
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
     }, []);
 
-    const updateLocal = useCallback((id: string, partial: Partial<InternalMessage>) => {
-        setMessages((prev) => prev.map((m) => (m._id === id ? { ...m, ...partial } : m)));
+    const updateLocal = useCallback((id: string, partial: Partial<ChatMessage>) => {
+        setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...partial } : m)));
     }, []);
 
     const markAsRead = useCallback(async () => {
@@ -185,8 +216,9 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         setIsLoadingMore(true);
         try {
             const response = await messagingService.getMessages(conversationId, nextCursor, 15);
+            const transformedMessages = response.messages.map(msg => transformMessage(msg, currentUserId));
             // Prepend older messages to existing array
-            setMessages((prev) => [...response.messages, ...prev]);
+            setMessages((prev) => [...transformedMessages, ...prev]);
             setNextCursor(response.nextCursor);
             setHasMoreMessages(response.nextCursor !== null);
         } catch (err) {
@@ -194,7 +226,7 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         } finally {
             setIsLoadingMore(false);
         }
-    }, [conversationId, hasMoreMessages, isLoadingMore, nextCursor]);
+    }, [conversationId, hasMoreMessages, isLoadingMore, nextCursor, currentUserId]);
 
     return {
         messages,

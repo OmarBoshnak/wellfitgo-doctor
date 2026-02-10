@@ -160,13 +160,24 @@ export function RecentActivitySection({
                         </Text>
                     </View>
 
-                    {/* Client Avatar (optional) */}
-                    {activity.clientAvatar && (
+                    {/* Client Initials Avatar (or Image) */}
+                    {activity.clientAvatar ? (
                         <Image
                             source={{ uri: activity.clientAvatar }}
                             style={styles.clientAvatar}
                         />
-                    )}
+                    ) : activity.clientName ? (
+                        <View style={[styles.clientAvatar, styles.initialsAvatar]}>
+                            <Text style={styles.initialsText}>
+                                {activity.clientName
+                                    .split(' ')
+                                    .map((n) => n[0])
+                                    .join('')
+                                    .substring(0, 2)
+                                    .toUpperCase()}
+                            </Text>
+                        </View>
+                    ) : null}
                 </TouchableOpacity>
             ))}
 
@@ -299,5 +310,17 @@ const styles = StyleSheet.create({
         fontSize: ScaleFontSize(12),
         color: colors.textSecondary,
         textAlign: 'center',
+    },
+    initialsAvatar: {
+        backgroundColor: colors.bgSecondary,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    initialsText: {
+        fontSize: ScaleFontSize(10),
+        fontWeight: '600',
+        color: colors.primary,
     },
 });

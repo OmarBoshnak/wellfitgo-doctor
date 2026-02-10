@@ -4,7 +4,7 @@
  * Integrated with backend API
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import {
     User,
@@ -33,7 +34,7 @@ import { isRTL } from '@/src/core/constants/translation';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { ProfileService, DoctorProfile } from '@/src/shared/services/profile/profile.service';
 import { AuthService } from '@/src/shared/services/auth/auth.service';
-import api from '@/src/shared/services/api/client';
+import { dashboardService } from '@/src/shared/services/dashboard.service';
 
 import { getDoctorProfileTranslations } from '@/src/features/settings/locales/doctor-profile.locale';
 
@@ -137,28 +138,34 @@ export default function DoctorSettingsScreen() {
     const specialization = profile?.specialization || t.registeredDietitian;
 
     // Load data on mount
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             setIsLoading(true);
 
             // Fetch profile and stats in parallel
             const [profileResponse, statsResponse] = await Promise.all([
                 ProfileService.getDoctorProfile(),
-                api.get<{ activeClients: number }>('/doctors/dashboard/stats').catch(() => ({ data: { activeClients: 0 } })),
+                dashboardService.getStats(),
             ]);
 
             setProfile(profileResponse);
-            setDashboardStats({ activeClients: statsResponse.data.activeClients || 0 });
+            setDashboardStats({ activeClients: statsResponse.activeClients || 0 });
         } catch (error) {
             console.error('[Settings] Failed to load data:', error);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    useFocusEffect(
+        useCallback(() => {
+            loadData();
+        }, [loadData])
+    );
 
     // Handle avatar image selection and upload
     const handleEditAvatar = async () => {
@@ -226,7 +233,7 @@ export default function DoctorSettingsScreen() {
                         try {
                             setIsSigningOut(true);
                             await AuthService.logout();
-                            router.replace('/(auth)/LoginScreen');
+                            router.replace('/(auth)/login');
                         } catch (error) {
                             console.error('Sign out error:', error);
                             Alert.alert(

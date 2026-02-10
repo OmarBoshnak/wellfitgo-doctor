@@ -382,8 +382,8 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
             {waveform.map((amplitude, index) => {
                 const isPlayed = index < playedBars;
                 const barColor = isMine
-                    ? isPlayed ? colors.primaryDark : '#D1D5DB'
-                    : isPlayed ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)';
+                    ? isPlayed ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)'
+                    : isPlayed ? colors.primaryDark : '#D1D5DB';
 
                 return (
                     <Animated.View
@@ -404,47 +404,13 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
     return (
         <View style={[styles.container, isMine ? styles.containerMine : styles.containerClient]}>
             {isMine ? (
-                <View style={[styles.bubble, styles.bubbleMine]}>
-                    <View style={[styles.content, { flexDirection: 'row-reverse' }]}>
-                        {/* Play/Pause Button */}
-                        <TouchableOpacity
-                            style={styles.playButton}
-                            onPress={handlePlayPause}
-                            disabled={isLoading}
-                            activeOpacity={0.7}
-                        >
-                            <MaterialIcons
-                                name={isLoading ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
-                                size={26}
-                                color={colors.primaryDark}
-                            />
-                        </TouchableOpacity>
-
-                        {/* Waveform */}
-                        <View style={styles.waveformWrapper}>
-                            {renderWaveform()}
-                        </View>
-
-                        {/* Time & Speed Control */}
-                        <View style={styles.rightControls}>
-                            <TouchableOpacity
-                                style={styles.speedButton}
-                                onPress={handleSpeedChange}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.speedTextClient}>{playbackSpeed}x</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            ) : (
                 <LinearGradient
                     colors={['#5073FE', '#02C3CD']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={[styles.bubble, styles.bubbleClient]}
+                    style={[styles.bubble, styles.bubbleMine]}
                 >
-                    <View style={[styles.content, { flexDirection: 'row' }]}>
+                    <View style={[styles.content, { flexDirection: 'row-reverse' }]}>
                         {/* Play/Pause Button */}
                         <TouchableOpacity
                             style={[styles.playButton, styles.playButtonClient]}
@@ -476,6 +442,40 @@ export default function VoiceMessageBubble({ id, audioUri, duration = 0, isMine,
                         </View>
                     </View>
                 </LinearGradient>
+            ) : (
+                <View style={[styles.bubble, styles.bubbleClient]}>
+                    <View style={[styles.content, { flexDirection: 'row' }]}>
+                        {/* Play/Pause Button */}
+                        <TouchableOpacity
+                            style={styles.playButton}
+                            onPress={handlePlayPause}
+                            disabled={isLoading}
+                            activeOpacity={0.7}
+                        >
+                            <MaterialIcons
+                                name={isLoading ? 'hourglass-empty' : isPlaying ? 'pause' : 'play-arrow'}
+                                size={26}
+                                color={colors.primaryDark}
+                            />
+                        </TouchableOpacity>
+
+                        {/* Waveform */}
+                        <View style={styles.waveformWrapper}>
+                            {renderWaveform()}
+                        </View>
+
+                        {/* Time & Speed Control */}
+                        <View style={styles.rightControls}>
+                            <TouchableOpacity
+                                style={styles.speedButton}
+                                onPress={handleSpeedChange}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.speedTextClient}>{playbackSpeed}x</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
             )}
 
             {/* Timestamp */}
@@ -509,12 +509,12 @@ const styles = StyleSheet.create({
     },
     bubbleMine: {
         borderBottomRightRadius: horizontalScale(4), // Tail on right
-        backgroundColor: colors.white,
-        borderWidth: 1,
-        borderColor: colors.primaryDark,
     },
     bubbleClient: {
         borderBottomLeftRadius: horizontalScale(4), // Tail on left
+        backgroundColor: colors.white,
+        borderWidth: 1,
+        borderColor: colors.primaryDark,
     },
     content: {
         flexDirection: 'row-reverse',

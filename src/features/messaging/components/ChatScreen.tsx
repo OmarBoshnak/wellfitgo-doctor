@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Text, Alert, TextInput, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -64,8 +64,8 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
         fetchUser();
     }, []);
 
-    // Use hook for real-time messages
-    const { messages: convexMessages, isLoading, sendMessage, sendVoiceMessage, hasMoreMessages, isLoadingMore, loadMoreMessages } = useChatScreen(conversationId);
+    // Use hook for real-time messages - messages are already transformed to ChatMessage format
+    const { messages, isLoading, sendMessage, sendVoiceMessage, hasMoreMessages, isLoadingMore, loadMoreMessages } = useChatScreen(conversationId);
 
     // Helper function to upload file to backend storage
     const uploadFile = useCallback(async (uri: string, mimeType: string = 'audio/m4a', filename?: string): Promise<string | null> => {
@@ -92,32 +92,6 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
             setIsUploading(false);
         }
     }, []);
-
-    // Transform messages to our ChatMessage format
-    const messages: ChatMessage[] = useMemo(() => {
-        if (!convexMessages || convexMessages.length === 0) {
-            return [];
-        }
-
-        return convexMessages.map((msg: any) => ({
-            id: msg._id,
-            type: msg.messageType === 'voice' ? 'audio' : msg.messageType || 'text',
-            sender: msg.senderRole === 'doctor' ? 'me' : 'client',
-            senderId: msg.senderId,
-            content: msg.content,
-            timestamp: new Date(msg.createdAt).toLocaleTimeString('ar-EG', {
-                hour: '2-digit',
-                minute: '2-digit'
-            }),
-            status: msg.isDeleted ? 'deleted' : msg.isEdited ? 'edited' : msg.isReadByClient ? 'read' : 'sent',
-            isEdited: msg.isEdited,
-            isDeleted: msg.isDeleted,
-            audioUri: msg.mediaUrl,
-            audioDuration: msg.mediaDuration
-                ? (msg.optimistic ? msg.mediaDuration : msg.mediaDuration * 1000)
-                : undefined,
-        }));
-    }, [convexMessages]);
 
     // Message action handlers
     const handleMessageLongPress = useCallback((message: ChatMessage) => {

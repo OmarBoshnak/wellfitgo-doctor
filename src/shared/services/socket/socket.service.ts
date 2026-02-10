@@ -11,9 +11,23 @@ export const SocketService = {
         const token = await AsyncStorage.getItem('token');
         if (!token) return;
 
+        // Read the stored user to include userId & role in socket auth
+        let userId: string | undefined;
+        try {
+            const userStr = await AsyncStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                userId = user._id || user.id;
+            }
+        } catch (e) {
+            console.warn('[SocketService] Failed to read user from storage:', e);
+        }
+
+        const authPayload = { token, userId, role: 'doctor' as const };
+
         // Main Socket
         socket = io(Config.SOCKET_URL, {
-            auth: { token },
+            auth: authPayload,
             transports: ['websocket'],
         });
 
@@ -23,7 +37,7 @@ export const SocketService = {
 
         // Doctor Namespace
         doctorNamespace = io(`${Config.SOCKET_URL}/doctor`, {
-            auth: { token },
+            auth: authPayload,
             transports: ['websocket'],
         });
 
@@ -33,7 +47,7 @@ export const SocketService = {
 
         // Chat Namespace
         chatNamespace = io(`${Config.SOCKET_URL}/chat`, {
-            auth: { token },
+            auth: authPayload,
             transports: ['websocket'],
         });
 

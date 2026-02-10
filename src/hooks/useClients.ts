@@ -30,6 +30,7 @@ export interface Client {
     // Weekly check-in
     weeklyCheckinDay: DayFilter;
     weeklyCheckinEnabled: boolean;
+    weeklyCheckinTime?: string;
 
     // Activity tracking
     lastActiveAt?: string;

@@ -3,7 +3,7 @@
  * @description Service for fetching and managing doctor's clients from the backend
  */
 
-import {Client, DayCounts, DayFilter} from '@/src/hooks/useClients';
+import { Client, DayCounts, DayFilter } from '@/src/hooks/useClients';
 import api from './api/client';
 
 // Backend response types
@@ -27,6 +27,8 @@ interface BackendClient {
     height?: number;
     status: string;
     weeklyCheckinDay: string;
+    weeklyCheckinTime?: string;
+    weeklyCheckinEnabled?: boolean;
     progress: number;
     startWeight: number;
     currentWeight: number;
@@ -54,6 +56,8 @@ interface ClientProgressResponse {
     }>;
     weeklyGoals: Record<string, any>;
     mealCompliance: number;
+    mealsCompleted?: number;
+    mealsTotal?: number;
     waterIntake: number;
     exerciseMinutes: number;
 }
@@ -73,7 +77,10 @@ const transformClient = (backendClient: BackendClient): Client => ({
     targetWeight: backendClient.targetWeight,
     progress: backendClient.progress,
     weeklyCheckinDay: backendClient.weeklyCheckinDay as DayFilter,
-    weeklyCheckinEnabled: true,
+    weeklyCheckinTime: backendClient.weeklyCheckinTime || '09:00',
+    weeklyCheckinEnabled: typeof backendClient.weeklyCheckinEnabled === 'boolean'
+        ? backendClient.weeklyCheckinEnabled
+        : true,
     lastActiveAt: backendClient.lastCheckIn,
     lastCheckInDays: backendClient.lastCheckInDays ?? null,
     subscriptionStatus: backendClient.subscriptionStatus,
@@ -178,7 +185,7 @@ export const clientsService = {
      */
     async updateClientNotes(clientId: string, notes: string): Promise<void> {
         try {
-            const response = await api.put(`/doctors/clients/${clientId}/notes`, {notes});
+            const response = await api.put(`/doctors/clients/${clientId}/notes`, { notes });
 
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Failed to update notes');
@@ -212,7 +219,7 @@ export const clientsService = {
      */
     async createClientNote(clientId: string, content: string): Promise<any> {
         try {
-            const response = await api.post(`/doctors/clients/${clientId}/notes`, {content});
+            const response = await api.post(`/doctors/clients/${clientId}/notes`, { content });
 
             if (!response.data.success) {
                 throw new Error(response.data.message || 'Failed to create note');

@@ -1,11 +1,12 @@
-import React, {useEffect, useMemo, useState} from 'react';
-import {ActivityIndicator, Alert, FlatList, Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import {LinearGradient} from 'expo-linear-gradient';
-import {Calendar, Check, ChevronDown, Utensils, X} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {colors, gradients} from '@/src/core/constants/Theme';
-import {isRTL} from '@/src/core/constants/translation';
-import {horizontalScale, ScaleFontSize, verticalScale} from '@/src/core/utils/scaling';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Calendar, Check, ChevronDown, Utensils, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, gradients } from '@/src/core/constants/Theme';
+import { isRTL } from '@/src/core/constants/translation';
+import { horizontalScale, ScaleFontSize, verticalScale } from '@/src/core/utils/scaling';
+import plansService from '@/src/shared/services/plans.service';
 
 // ============ TYPES ============
 
@@ -63,9 +64,9 @@ const t = {
 // ============ GOAL LABELS ============
 
 const goalLabels: Record<string, { en: string; ar: string }> = {
-    weight_loss: {en: 'Weight Loss', ar: 'إنقاص الوزن'},
-    maintain: {en: 'Maintain', ar: 'الحفاظ'},
-    gain_muscle: {en: 'Build Muscle', ar: 'بناء العضلات'},
+    weight_loss: { en: 'Weight Loss', ar: 'إنقاص الوزن' },
+    maintain: { en: 'Maintain', ar: 'الحفاظ' },
+    gain_muscle: { en: 'Build Muscle', ar: 'بناء العضلات' },
 };
 
 // ============ DATE HELPERS ============
@@ -92,7 +93,7 @@ const generateDateOptions = (): DateOption[] => {
         const label = `${daysEn[dayOfWeek]}, ${months[month]} ${dayNum}`;
         const labelAr = `${daysAr[dayOfWeek]}، ${dayNum} ${monthsAr[month]}`;
 
-        options.push({value, label, labelAr});
+        options.push({ value, label, labelAr });
     }
 
     return options;
@@ -101,14 +102,14 @@ const generateDateOptions = (): DateOption[] => {
 // ============ COMPONENT ============
 
 export function DietPlanSelector({
-                                     visible,
-                                     clientId,
-                                     clientName,
-                                     onClose,
-                                     onSuccess,
-                                     editMode = false,
-                                     editPlanId
-                                 }: DietPlanSelectorProps) {
+    visible,
+    clientId,
+    clientName,
+    onClose,
+    onSuccess,
+    editMode = false,
+    editPlanId
+}: DietPlanSelectorProps) {
     const insets = useSafeAreaInsets();
     const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>('');
@@ -122,9 +123,33 @@ export function DietPlanSelector({
     // Fetch diet plans on mount
     useEffect(() => {
         if (visible) {
-            // TODO: Fetch from backend API
-            setDietPlans([]);
-            setIsLoading(false);
+            const fetchPlans = async () => {
+                try {
+                    setIsLoading(true);
+                    const data = await plansService.getDietPrograms();
+                    // Map backend data to DietPlan type
+                    const mappedPlans: DietPlan[] = data.map((p: any) => ({
+                        id: p.id || p._id,
+                        name: p.name,
+                        nameAr: p.nameAr || p.name,
+                        description: p.description,
+                        descriptionAr: p.descriptionAr,
+                        emoji: p.emoji || '🍽️',
+                        type: p.type || 'custom',
+                        targetGoal: p.targetGoal,
+                        targetCalories: p.targetCalories || 0,
+                        format: p.format || 'general',
+                    }));
+                    setDietPlans(mappedPlans);
+                } catch (error) {
+                    console.error('Error fetching diet plans:', error);
+                    Alert.alert(t.error, 'Failed to load diet plans');
+                    setDietPlans([]);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchPlans();
         }
     }, [visible]);
 
@@ -158,12 +183,21 @@ export function DietPlanSelector({
         setIsAssigning(true);
         try {
             if (editMode && editPlanId) {
-                // TODO: Call backend API to update plan
-                console.log('Updating plan:', {editPlanId, selectedPlan, selectedDate});
+                // For edit mode: delete old plan, then assign new one
+                await plansService.deleteClientMealPlan(clientId, editPlanId);
+                await plansService.assignDietToClients(selectedPlan, [clientId], {
+                    startDate: selectedDate,
+                    durationWeeks: null,
+                    notifyPush: false,
+                });
                 Alert.alert('✅', t.successUpdate);
             } else {
-                // TODO: Call backend API to create new plan
-                console.log('Assigning plan:', {clientId, selectedPlan, selectedDate});
+                // Create new plan assignment
+                await plansService.assignDietToClients(selectedPlan, [clientId], {
+                    startDate: selectedDate,
+                    durationWeeks: null,
+                    notifyPush: false,
+                });
                 Alert.alert('✅', t.success);
             }
             setSelectedPlan(null);
@@ -177,7 +211,7 @@ export function DietPlanSelector({
         setIsAssigning(false);
     };
 
-    const renderPlanCard = ({item}: { item: DietPlan }) => {
+    const renderPlanCard = ({ item }: { item: DietPlan }) => {
         const isSelected = selectedPlan === item.id;
         const name = isRTL ? (item.nameAr || item.name) : item.name;
         const description = isRTL ? (item.descriptionAr || item.description) : item.description;
@@ -189,50 +223,50 @@ export function DietPlanSelector({
                 onPress={() => setSelectedPlan(item.id)}
                 activeOpacity={0.7}
             >
-                <View style={[styles.planRow, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
-                    {/* Icon */}
-                    <View style={[styles.planIcon, isSelected && styles.planIconSelected]}>
-                        <Text style={styles.planEmoji}>{item.emoji || '🍽️'}</Text>
-                    </View>
-
+                <View style={[styles.planRow, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                    {/* Checkmark */}
+                    {isSelected && (
+                        <View style={styles.checkmark}>
+                            <Check size={16} color="#FFFFFF" />
+                        </View>
+                    )}
                     {/* Content */}
                     <View style={styles.planContent}>
                         <Text
-                            style={[styles.planName, isSelected && styles.planNameSelected, {textAlign: isRTL ? 'left' : 'right'}]}>
+                            style={[styles.planName, isSelected && styles.planNameSelected, { textAlign: isRTL ? 'right' : 'left' }]}>
                             {name}
                         </Text>
                         {description && (
-                            <Text style={[styles.planDescription, {textAlign: isRTL ? 'left' : 'right'}]}
-                                  numberOfLines={1}>
+                            <Text style={[styles.planDescription, { textAlign: isRTL ? 'right' : 'left' }]}
+                                numberOfLines={1}>
                                 {description}
                             </Text>
                         )}
-                        <View style={[styles.planMeta, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+                        <View style={[styles.planMeta, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                            {(item.targetCalories ?? 0) > 0 && (
+                                <Text style={styles.caloriesText}>
+                                    {item.targetCalories} {t.calories}
+                                </Text>
+                            )}
                             {goalLabel && (
                                 <View style={styles.metaBadge}>
                                     <Text style={styles.metaBadgeText}>{goalLabel}</Text>
                                 </View>
                             )}
-                            {item.targetCalories && (
-                                <Text style={styles.caloriesText}>
-                                    {item.targetCalories} {t.calories}
-                                </Text>
-                            )}
+
                         </View>
                     </View>
+                    {/* Icon */}
+                    <View style={[styles.planIcon, isSelected && styles.planIconSelected]}>
+                        <Text style={styles.planEmoji}>{item.emoji || '🍽️'}</Text>
+                    </View>
 
-                    {/* Checkmark */}
-                    {isSelected && (
-                        <View style={styles.checkmark}>
-                            <Check size={16} color="#FFFFFF"/>
-                        </View>
-                    )}
                 </View>
             </TouchableOpacity>
         );
     };
 
-    const renderDateOption = ({item}: { item: DateOption }) => {
+    const renderDateOption = ({ item }: { item: DateOption }) => {
         const isSelected = selectedDate === item.value;
         return (
             <TouchableOpacity
@@ -245,7 +279,7 @@ export function DietPlanSelector({
                 <Text style={[styles.dateOptionText, isSelected && styles.dateOptionTextSelected]}>
                     {isRTL ? item.labelAr : item.label}
                 </Text>
-                {isSelected && <Check size={16} color={colors.primaryDark}/>}
+                {isSelected && <Check size={16} color={colors.primaryDark} />}
             </TouchableOpacity>
         );
     };
@@ -259,14 +293,14 @@ export function DietPlanSelector({
         >
             <View style={styles.container}>
                 {/* Header */}
-                <View style={[styles.header, {flexDirection: isRTL ? 'row' : 'row-reverse'}]}>
+                <View style={[styles.header, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                     <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                        <X size={24} color={colors.textSecondary}/>
+                        <X size={24} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <View>
                         <Text
-                            style={[styles.title, {textAlign: isRTL ? 'right' : 'right'}]}>{editMode ? t.titleEdit : t.title}</Text>
-                        <Text style={[styles.subtitle, {textAlign: isRTL ? 'right' : 'right'}]}>
+                            style={[styles.title, { textAlign: isRTL ? 'right' : 'right' }]}>{editMode ? t.titleEdit : t.title}</Text>
+                        <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'right' }]}>
                             {clientName
                                 ? `${editMode ? t.subtitleEdit : t.subtitle} ${clientName}`
                                 : (editMode ? t.subtitleEdit : t.subtitle)}
@@ -276,18 +310,18 @@ export function DietPlanSelector({
 
                 {/* Date Picker Section */}
                 <View style={styles.dateSection}>
-                    <Text style={[styles.dateSectionLabel, {textAlign: isRTL ? 'right' : 'left'}]}>{t.startDate}</Text>
+                    <Text style={[styles.dateSectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t.startDate}</Text>
                     <TouchableOpacity
                         style={styles.dateSelector}
                         onPress={() => setShowDatePicker(!showDatePicker)}
                     >
-                        <ChevronDown size={18} color={colors.textSecondary}/>
-                        <Text style={[styles.dateSelectorText, {textAlign: isRTL ? 'right' : 'left'}]}>
+                        <ChevronDown size={18} color={colors.textSecondary} />
+                        <Text style={[styles.dateSelectorText, { textAlign: isRTL ? 'right' : 'left' }]}>
                             {selectedDateOption
                                 ? (isRTL ? selectedDateOption.labelAr : selectedDateOption.label)
                                 : t.selectDate}
                         </Text>
-                        <Calendar size={18} color={colors.primaryDark}/>
+                        <Calendar size={18} color={colors.primaryDark} />
                     </TouchableOpacity>
                 </View>
 
@@ -309,11 +343,11 @@ export function DietPlanSelector({
                     <>
                         {dietPlans === undefined ? (
                             <View style={styles.loadingContainer}>
-                                <ActivityIndicator size="large" color={colors.primaryDark}/>
+                                <ActivityIndicator size="large" color={colors.primaryDark} />
                             </View>
                         ) : dietPlans.length === 0 ? (
                             <View style={styles.emptyContainer}>
-                                <Utensils size={48} color={colors.textSecondary}/>
+                                <Utensils size={48} color={colors.textSecondary} />
                                 <Text style={styles.emptyText}>{t.noPlans}</Text>
                             </View>
                         ) : (
@@ -329,7 +363,7 @@ export function DietPlanSelector({
                 )}
 
                 {/* Footer */}
-                <View style={[styles.footer, {paddingBottom: insets.bottom + verticalScale(16)}]}>
+                <View style={[styles.footer, { paddingBottom: insets.bottom + verticalScale(16) }]}>
                     <TouchableOpacity
                         activeOpacity={0.9}
                         onPress={handleAssign}
@@ -338,15 +372,15 @@ export function DietPlanSelector({
                     >
                         <LinearGradient
                             colors={selectedPlan ? gradients.primary : ['#E5E7EB', '#D1D5DB']}
-                            start={{x: 0, y: 0}}
-                            end={{x: 1, y: 0}}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
                             style={styles.assignButton}
                         >
                             {isAssigning ? (
-                                <ActivityIndicator size="small" color="#FFFFFF"/>
+                                <ActivityIndicator size="small" color="#FFFFFF" />
                             ) : (
                                 <>
-                                    <Check size={20} color="#FFFFFF"/>
+                                    <Check size={20} color="#FFFFFF" />
                                     <Text style={styles.assignButtonText}>
                                         {editMode ? t.update : t.assign}
                                     </Text>

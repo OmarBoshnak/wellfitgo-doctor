@@ -76,6 +76,8 @@ interface ClientProgressData {
     weightHistory?: RawWeightEntry[];
     weeklyGoals?: Record<string, any>;
     mealCompliance?: number;
+    mealsCompleted?: number;
+    mealsTotal?: number;
     waterIntake?: number;
     exerciseMinutes?: number;
 }
@@ -394,21 +396,23 @@ export function useClientProfileScreen(clientId?: string): UseClientProfileResul
 
     const activities = useMemo(() => activitiesData, [activitiesData]);
 
-    const mealsCompleted = progressData?.mealCompliance
+    const mealsCompleted = progressData?.mealsCompleted ?? (progressData?.mealCompliance
         ? Math.round((progressData.mealCompliance / 100) * DEFAULT_MEALS_TOTAL)
-        : 0;
+        : 0);
+
+    const mealsTotal = progressData?.mealsTotal ?? DEFAULT_MEALS_TOTAL;
 
     const weeklyStats = useMemo(() => {
         if (!weightHistory.length && !progressData) return null;
         const lastLog = weightHistory[0];
         return {
             mealsCompleted,
-            mealsTotal: DEFAULT_MEALS_TOTAL,
+            mealsTotal,
             hasWeightLog: !!lastLog,
             lastWeightLogDate: lastLog?.date ?? null,
             lastWeightLogFeeling: lastLog?.feeling ?? null,
         };
-    }, [weightHistory, mealsCompleted, progressData]);
+    }, [weightHistory, mealsCompleted, mealsTotal, progressData]);
 
     const chartData = useMemo(() => {
         const filteredHistory = filterHistoryByPeriod(weightHistory, chartPeriod);

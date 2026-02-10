@@ -29,6 +29,9 @@ export interface Message {
     mediaDuration?: number;
     clientTempId?: string;
     replyToId?: string;
+    replyToContent?: string;
+    replyToSenderId?: string;
+    replyToSenderRole?: 'doctor' | 'client';
     isDeleted: boolean;
     isEdited: boolean;
     isReadByDoctor: boolean;

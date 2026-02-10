@@ -381,8 +381,29 @@ export const useRecentActivity = (limit: number) => {
 };
 
 export const useSocket = () => {
-    return {
-        isConnected: true,
-    };
+    const [isConnected, setIsConnected] = useState(false);
+
+    useEffect(() => {
+        let mounted = true;
+        const { SocketService } = require('@/src/shared/services/socket/socket.service');
+
+        const init = async () => {
+            try {
+                await SocketService.connect();
+                if (mounted) setIsConnected(true);
+            } catch (e) {
+                console.warn('[useSocket] Connection failed:', e);
+            }
+        };
+
+        init();
+
+        return () => {
+            mounted = false;
+            SocketService.disconnect();
+        };
+    }, []);
+
+    return { isConnected };
 };
 

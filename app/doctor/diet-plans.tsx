@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import {
@@ -11,6 +11,7 @@ import {
 } from '@/src/features/meals';
 import { colors } from '@/src/core/constants/Theme';
 import { horizontalScale } from '@/src/core/utils/scaling';
+import { plansService } from '@/src/shared/services';
 
 type ViewType = 'list' | 'details' | 'edit' | 'create';
 
@@ -30,6 +31,7 @@ export default function DietPlansScreen() {
     const [selectedDiet, setSelectedDiet] = useState<any>(null);
     const [createParams, setCreateParams] = useState<{ id: string; type: string } | null>(null);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [isAssigning, setIsAssigning] = useState(false);
 
     const handleBack = () => {
         if (view === 'list') {
@@ -46,10 +48,26 @@ export default function DietPlansScreen() {
         setShowAssignModal(true);
     };
 
-    const handleAssignComplete = (selectedClients: string[]) => {
-        console.log('Assigned diet to clients:', selectedClients);
-        setShowAssignModal(false);
-        setView('list');
+    const handleAssignComplete = async (
+        selectedClients: string[],
+        settings: { startDate: string; durationWeeks: number | null; notifyPush: boolean }
+    ) => {
+        if (!selectedDiet) {
+            Alert.alert('Assignment Failed', 'No diet plan selected. Please try again.');
+            return;
+        }
+
+        setIsAssigning(true);
+        try {
+            await plansService.assignDietToClients(selectedDiet.id, selectedClients, settings);
+            setShowAssignModal(false);
+            setView('list');
+        } catch (error) {
+            console.error('Assignment failed:', error);
+            Alert.alert('Assignment Failed', 'Could not assign diet to clients. Please try again.');
+        } finally {
+            setIsAssigning(false);
+        }
     };
 
     const handleViewDetails = (diet: any) => {
@@ -119,6 +137,7 @@ export default function DietPlansScreen() {
                 diet={selectedDiet}
                 onClose={() => setShowAssignModal(false)}
                 onAssign={handleAssignComplete}
+                isAssigning={isAssigning}
             />
         </SafeAreaView>
     );

@@ -373,7 +373,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
                         {/* Body Text */}
                         <Text style={styles.successBody}>
                             <Text style={styles.successBold}>
-                                {diet?.name || 'Classic'} {diet?.range || '1200-1300'}
+                                {diet?.name || 'Classic'}
                             </Text>
                             {' '}{t.hasBeenAssigned}{' '}
                             <Text style={styles.successBoldDark}>

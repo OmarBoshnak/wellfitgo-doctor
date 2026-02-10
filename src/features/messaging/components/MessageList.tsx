@@ -90,7 +90,7 @@ const MessageList = React.memo(function MessageList({
         </View>
     );
 
-    const keyExtractor = (item: ChatMessage) => item.id;
+    const keyExtractor = (item: ChatMessage, index: number) => item.id || `msg-${index}`;
 
     return (
         <FlatList

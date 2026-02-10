@@ -12,6 +12,7 @@ import {
     ActivityIndicator,
     Image,
     Alert,
+    RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +26,7 @@ import ProgressChart from '../../../meals/components/ProgressChart';
 import DayScroller from '../../../meals/components/DayScroller';
 import { plansService } from '@/src/shared/services';
 import type { ClientProgressDetails, DailyMealLog, ClientAnalytics } from '@/src/shared/services/plans.service';
+import settingsService, { ClientSettings } from '@/src/shared/services/settings.service';
 
 
 // Translations
@@ -47,6 +49,28 @@ const t = {
     reminderFailed: isRTL ? 'فشل إرسال التذكير' : 'Failed to send reminder',
     modifyPlan: isRTL ? 'تعديل الخطة' : 'Modify Plan',
     messageClient: isRTL ? 'مراسلة العميل' : 'Message Client',
+    reminderSettings: isRTL ? 'إعدادات تذكير الوجبات' : 'Meal Reminder Settings',
+    remindersDisabled: isRTL ? 'التذكيرات معطلة' : 'Reminders disabled',
+    remindersLoading: isRTL ? 'جاري تحميل الإعدادات...' : 'Loading reminder settings...',
+    enabled: isRTL ? 'مفعل' : 'Enabled',
+    disabled: isRTL ? 'معطل' : 'Disabled',
+    timezone: isRTL ? 'المنطقة الزمنية' : 'Timezone',
+};
+
+const MEAL_LABELS = {
+    breakfast: { en: 'Breakfast', ar: 'الإفطار' },
+    snack1: { en: 'Snack', ar: 'وجبة خفيفة' },
+    lunch: { en: 'Lunch', ar: 'الغداء' },
+    snack2: { en: 'Snack', ar: 'وجبة خفيفة' },
+    dinner: { en: 'Dinner', ar: 'العشاء' },
+};
+
+const DEFAULT_MEAL_REMINDERS_SCHEDULE = {
+    breakfast: { enabled: true, time: '08:00' },
+    snack1: { enabled: false, time: '11:00' },
+    lunch: { enabled: true, time: '13:00' },
+    snack2: { enabled: false, time: '16:00' },
+    dinner: { enabled: true, time: '19:00' },
 };
 
 // Helper functions
@@ -77,6 +101,39 @@ const formatCompletedAt = (timestamp?: number): string => {
     });
 };
 
+/**
+ * Generate days array for DayScroller based on plan start date and duration
+ * @param startDateISO - Plan start date in ISO format (YYYY-MM-DD)
+ * @param durationDays - Total number of days in the plan
+ * @returns Array of day objects for DayScroller component
+ */
+const generatePlanDays = (startDateISO: string, durationDays: number) => {
+    const days = [];
+    const startDate = new Date(startDateISO);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < durationDays; i++) {
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+
+        const dateString = currentDate.toISOString().split('T')[0];
+        const isToday = currentDate.getTime() === today.getTime();
+        const weekNumber = Math.floor(i / 7) + 1;
+
+        days.push({
+            date: dateString,
+            dayNum: currentDate.getDate(),
+            label: currentDate.toLocaleDateString('en-US', { weekday: 'short' }),
+            labelAr: currentDate.toLocaleDateString('ar-EG', { weekday: 'short' }),
+            isToday,
+            weekNumber,
+        });
+    }
+
+    return days;
+};
+
 interface MealItem {
     id: string;
     name: string;
@@ -104,33 +161,27 @@ interface ClientProgressViewProps {
     onBack?: () => void;
 }
 
-// Meal Checklist Item
-const MealChecklistItem: React.FC<{ meal: MealItem }> = ({ meal }) => {
+// Meal Checklist Item (Read-only for doctors)
+const MealChecklistItem: React.FC<{ 
+    meal: MealItem; 
+}> = ({ meal }) => {
     const displayName = isRTL ? meal.nameAr : meal.name;
 
     return (
-        <View style={[styles.mealItem, isRTL && styles.mealItemRTL]}>
+        <View style={styles.mealItem}>
             <View
                 style={[
                     styles.checkbox,
-                    meal.isCompleted && styles.checkboxCompleted,
+                    meal.isCompleted && styles.checkboxCompleted
                 ]}
             >
-                {meal.isCompleted && (
+                {meal.isCompleted ? (
                     <Ionicons name="checkmark" size={16} color={colors.white} />
-                )}
+                ) : null}
             </View>
 
             <View style={styles.mealContent}>
                 <View style={[styles.mealHeader, isRTL && styles.mealHeaderRTL]}>
-                    <Text
-                        style={[
-                            styles.mealName,
-                            meal.isCompleted && styles.mealNameCompleted,
-                        ]}
-                    >
-                        {displayName}
-                    </Text>
                     {meal.isCompleted && meal.completedAt ? (
                         <View style={styles.completedBadge}>
                             <Text style={styles.completedBadgeText}>
@@ -144,6 +195,14 @@ const MealChecklistItem: React.FC<{ meal: MealItem }> = ({ meal }) => {
                             </Text>
                         </View>
                     )}
+                    <Text
+                        style={[
+                            styles.mealName,
+                            meal.isCompleted && styles.mealNameCompleted,
+                        ]}
+                    >
+                        {displayName}
+                    </Text>
                 </View>
             </View>
 
@@ -193,6 +252,9 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    const [clientSettings, setClientSettings] = useState<ClientSettings | null>(null);
+    const [settingsLoading, setSettingsLoading] = useState(false);
 
     // Fetch enhanced client progress from backend
     useEffect(() => {
@@ -227,10 +289,52 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         fetchEnhancedProgress();
     }, [clientId, planId, retryCount]);
 
+    const fetchClientSettings = useCallback(async () => {
+        if (!clientId) return;
+
+        setSettingsLoading(true);
+        try {
+            const settings = await settingsService.getClientSettings(clientId);
+            setClientSettings(settings);
+        } catch (err) {
+            console.error('Error fetching client settings:', err);
+        } finally {
+            setSettingsLoading(false);
+        }
+    }, [clientId]);
+
+    useEffect(() => {
+        fetchClientSettings();
+    }, [fetchClientSettings, retryCount]);
+
     // Retry handler
     const handleRetry = useCallback(() => {
         setRetryCount(prev => prev + 1);
     }, []);
+
+    // Refresh handler
+    const handleRefresh = useCallback(async () => {
+        if (!planId) return;
+
+        setRefreshing(true);
+        try {
+            setError(null);
+            // Fetch detailed progress data
+            const [progressData, analyticsData] = await Promise.all([
+                plansService.getClientProgressDetails(clientId, planId),
+                plansService.getClientAnalytics(clientId, planId, 'month')
+            ]);
+
+            setProgressDetails(progressData);
+            setAnalytics(analyticsData);
+            await fetchClientSettings();
+        } catch (err) {
+            console.error('Error refreshing client progress:', err);
+            setError('Failed to refresh data. Please try again.');
+        } finally {
+            setRefreshing(false);
+        }
+    }, [clientId, planId, fetchClientSettings]);
 
     const handleDaySelect = useCallback((date: string) => {
         setSelectedDate(date);
@@ -294,6 +398,10 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
         return dayDate.toLocaleDateString(isRTL ? 'ar-EG' : 'en-US', { weekday: 'short' });
     }, [selectedDayData]);
 
+    const reminderSettings = clientSettings?.notificationSettings;
+    const reminderSchedule = reminderSettings?.mealRemindersSchedule || DEFAULT_MEAL_REMINDERS_SCHEDULE;
+    const reminderTimezone = reminderSettings?.timezone || 'UTC';
+
     // Loading state
     if (isLoading) {
         return (
@@ -331,6 +439,14 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
     const { plan, weeklyStats } = progressDetails;
     const meals = selectedDayData?.meals || [];
 
+    // Debug: Log meal data to verify diet plan integration
+    console.log('ClientProgressView meal data:', {
+        selectedDate,
+        selectedDayData,
+        mealsCount: meals.length,
+        meals: meals.map(m => ({ id: m.id, name: m.name, time: m.time, isCompleted: m.isCompleted }))
+    });
+
     return (
         <SafeAreaView style={styles.container} edges={['left', 'right']}>
             {/* Header */}
@@ -363,6 +479,14 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor={colors.primaryDark}
+                        colors={[colors.primaryDark]}
+                    />
+                }
                 ListHeaderComponent={() => (
                     <>
                         {/* Plan Summary Card */}
@@ -375,40 +499,40 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                             <View style={styles.decorBlob1} />
                             <View style={styles.decorBlob2} />
 
-                            <View style={[styles.summaryContent, isRTL && styles.summaryContentRTL]}>
-                                <View style={styles.summaryInfo}>
-                                    <View style={styles.activeBadge}>
-                                        <View style={styles.activeDot} />
-                                        <Text style={styles.activeBadgeText}>{t.active}</Text>
-                                    </View>
-
-                                    <Text style={styles.planName}>
-                                        {plan.emoji} {isRTL ? plan.nameAr : plan.name}
-                                    </Text>
-
-                                    <View style={styles.metaRow}>
-                                        <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.7)" />
-                                        <Text style={styles.metaText}>
-                                            {t.assigned} {formatStartDate(plan.startDate)}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.metaRow}>
-                                        <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.7)" />
-                                        <Text style={styles.metaText}>
-                                            {t.weekLabel} {plan.currentWeek} {t.ofTotal} {plan.totalWeeks} {isRTL ? 'أسابيع' : 'weeks'}
-                                        </Text>
-                                    </View>
+                            <View style={[styles.summaryContent]}>
+                                <View style={styles.activeBadge}>
+                                    <View style={styles.activeDot} />
+                                    <Text style={styles.activeBadgeText}>{t.active}</Text>
                                 </View>
-
                                 <View style={styles.summaryIcon}>
                                     <Ionicons name="restaurant-outline" size={24} color={colors.white} />
                                 </View>
+                            </View>
+                            <View>
+                                <Text style={styles.planName}>
+                                    {plan.emoji} {isRTL ? plan.nameAr : plan.name}
+                                </Text>
+
+                                <View style={styles.metaRow}>
+                                    <Ionicons name="calendar-outline" size={14} color="rgba(255,255,255,0.7)" />
+                                    <Text style={styles.metaText}>
+                                        {t.assigned} {formatStartDate(plan.startDate)}
+                                    </Text>
+
+                                </View>
+                                <View style={styles.metaRow}>
+                                    <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.7)" />
+                                    <Text style={styles.metaText}>
+                                        {t.weekLabel} {plan.currentWeek} {t.ofTotal} {plan.totalWeeks} {isRTL ? 'أسابيع' : 'weeks'}
+                                    </Text>
+                                </View>
+
                             </View>
                         </LinearGradient>
 
                         {/* Plan Progress Card */}
                         <View style={[styles.card, shadows.light]}>
-                            <View style={[styles.cardHeader, isRTL && styles.cardHeaderRTL]}>
+                            <View style={[styles.cardHeader]}>
                                 <Text style={styles.cardTitle}>{t.planProgress}</Text>
                             </View>
 
@@ -420,19 +544,29 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                             </View>
 
                             <DayScroller
-                                days={progressDetails.dailyProgress.map((d) => {
-                                    const dayDate = new Date(d.date);
-                                    const isToday = dayDate.toDateString() === new Date().toDateString();
+                                days={generatePlanDays(
+                                    plan.startDate,
+                                    plan.endDate
+                                        ? Math.ceil((new Date(plan.endDate).getTime() - new Date(plan.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+                                        : plan.totalWeeks * 7
+                                ).map((day) => {
+                                    // Find the progress data for this day
+                                    const dayProgress = progressDetails.dailyProgress.find(d => d.date === day.date);
+                                    const dayDate = new Date(day.date);
                                     let status: 'completed' | 'partial' | 'missed' | 'upcoming';
 
-                                    if (d.completionRate === 100) {
-                                        status = 'completed';
-                                    } else if (d.completionRate > 0) {
-                                        status = 'partial';
-                                    } else if (isToday) {
-                                        status = 'partial'; // Today with no completion is still partial (in progress)
+                                    if (dayProgress) {
+                                        if (dayProgress.completionRate === 100) {
+                                            status = 'completed';
+                                        } else if (dayProgress.completionRate > 0) {
+                                            status = 'partial';
+                                        } else if (day.isToday) {
+                                            status = 'partial'; // Today with no completion is still partial (in progress)
+                                        } else {
+                                            status = 'missed';
+                                        }
                                     } else {
-                                        status = 'missed';
+                                        status = 'upcoming';
                                     }
 
                                     if (dayDate > new Date()) {
@@ -440,12 +574,9 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                                     }
 
                                     return {
-                                        ...d,
-                                        dayNum: dayDate.getDate(),
-                                        isToday,
+                                        ...day,
                                         status,
-                                        label: dayDate.toLocaleDateString('en-US', { weekday: 'short' }),
-                                        labelAr: dayDate.toLocaleDateString('ar-EG', { weekday: 'short' })
+                                        completionRate: dayProgress?.completionRate || 0,
                                     };
                                 })}
                                 selectedDate={selectedDate}
@@ -453,13 +584,60 @@ export const ClientProgressView: React.FC<ClientProgressViewProps> = ({
                             />
                         </View>
 
+                        {/* Reminder Settings Card */}
+                        <View style={[styles.card, shadows.light]}>
+                            <View style={[styles.cardHeader]}>
+                                <Text style={styles.cardTitle}>{t.reminderSettings}</Text>
+                            </View>
+
+                            {settingsLoading ? (
+                                <Text style={styles.reminderLoadingText}>{t.remindersLoading}</Text>
+                            ) : reminderSettings?.mealReminders === false ? (
+                                <Text style={styles.reminderDisabledText}>{t.remindersDisabled}</Text>
+                            ) : (
+                                <View style={styles.reminderList}>
+                                    <Text style={styles.reminderTimezoneText}>
+                                        {t.timezone}: {reminderTimezone}
+                                    </Text>
+                                    {Object.keys(reminderSchedule).map((mealKey) => {
+                                        const typedKey = mealKey as keyof typeof reminderSchedule;
+                                        const config = reminderSchedule[typedKey];
+                                        const label = isRTL ? MEAL_LABELS[typedKey].ar : MEAL_LABELS[typedKey].en;
+
+                                        return (
+                                            <View key={mealKey} style={[styles.reminderRow, isRTL && styles.reminderRowRTL]}>
+                                                <Text style={styles.reminderMealName}>{label}</Text>
+                                                <View style={[styles.reminderMeta, isRTL && styles.reminderMetaRTL]}>
+                                                    <Text style={styles.reminderTimeText}>
+                                                        {formatTime(config.time)}
+                                                    </Text>
+                                                    <View style={[
+                                                        styles.reminderBadge,
+                                                        config.enabled ? styles.reminderBadgeOn : styles.reminderBadgeOff,
+                                                    ]}>
+                                                        <Text style={styles.reminderBadgeText}>
+                                                            {config.enabled ? t.enabled : t.disabled}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+
                         {/* Daily Meals Header */}
-                        <View style={[styles.checklistHeader, isRTL && styles.checklistHeaderRTL]}>
+                        <View style={[styles.checklistHeader]}>
                             <Text style={styles.checklistTitle}>{selectedDayLabel}</Text>
                         </View>
                     </>
                 )}
-                renderItem={({ item }) => <MealChecklistItem meal={item} />}
+                renderItem={({ item }) => (
+                    <MealChecklistItem 
+                        meal={item} 
+                    />
+                )}
                 ListEmptyComponent={() => (
                     <View style={styles.emptyMeals}>
                         <Text style={styles.emptyMealsText}>
@@ -621,10 +799,7 @@ const styles = StyleSheet.create({
     summaryContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    summaryContentRTL: {
-        flexDirection: 'row',
+        alignItems: 'center',
     },
     summaryInfo: {
         flex: 1,
@@ -659,9 +834,10 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     metaRow: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         alignItems: 'center',
         gap: 6,
+        marginVertical: verticalScale(5)
     },
     metaText: {
         fontSize: ScaleFontSize(13),
@@ -682,30 +858,88 @@ const styles = StyleSheet.create({
         marginVertical: verticalScale(16),
     },
     cardHeader: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: verticalScale(16),
-    },
-    cardHeaderRTL: {
-        flexDirection: 'row',
     },
     cardTitle: {
         fontSize: ScaleFontSize(16),
         fontWeight: '700',
         color: colors.textSecondary,
+        textAlign: 'right'
+    },
+    reminderLoadingText: {
+        fontSize: ScaleFontSize(13),
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
+    reminderDisabledText: {
+        fontSize: ScaleFontSize(13),
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
+    reminderList: {
+        gap: verticalScale(10),
+    },
+    reminderTimezoneText: {
+        fontSize: ScaleFontSize(12),
+        color: colors.textSecondary,
+        textAlign: 'right',
+    },
+    reminderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.bgSecondary,
+        paddingHorizontal: horizontalScale(12),
+        paddingVertical: verticalScale(10),
+        borderRadius: 10,
+    },
+    reminderRowRTL: {
+        flexDirection: 'row-reverse',
+    },
+    reminderMealName: {
+        fontSize: ScaleFontSize(13),
+        fontWeight: '600',
+        color: colors.textPrimary,
+    },
+    reminderMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: horizontalScale(8),
+    },
+    reminderMetaRTL: {
+        flexDirection: 'row-reverse',
+    },
+    reminderTimeText: {
+        fontSize: ScaleFontSize(12),
+        color: colors.textSecondary,
+    },
+    reminderBadge: {
+        paddingHorizontal: horizontalScale(8),
+        paddingVertical: verticalScale(3),
+        borderRadius: 10,
+    },
+    reminderBadgeOn: {
+        backgroundColor: `${colors.success}22`,
+    },
+    reminderBadgeOff: {
+        backgroundColor: `${colors.textSecondary}22`,
+    },
+    reminderBadgeText: {
+        fontSize: ScaleFontSize(10),
+        fontWeight: '700',
+        color: colors.textPrimary,
     },
     chartContainer: {
         alignItems: 'center',
         marginBottom: verticalScale(24),
     },
     checklistHeader: {
-        flexDirection: 'row',
+        flexDirection: 'row-reverse',
         alignItems: 'center',
         paddingVertical: verticalScale(8),
-    },
-    checklistHeaderRTL: {
-        flexDirection: 'row',
     },
     checklistTitle: {
         fontSize: ScaleFontSize(16),
@@ -719,10 +953,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: horizontalScale(16),
         gap: horizontalScale(12),
-        marginBottom: verticalScale(8),
-    },
-    mealItemRTL: {
-        flexDirection: 'row',
     },
     checkbox: {
         width: 24,

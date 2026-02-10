@@ -597,6 +597,23 @@ export const plansService = {
             console.error('[PlansService] Error sending client reminder:', error);
             throw error;
         }
+    },
+
+    async updateMealCompletion(clientId: string, planId: string, mealId: string, date: string, isCompleted: boolean): Promise<boolean> {
+        try {
+            const response = await api.put(`/doctors/clients/${clientId}/plans/${planId}/meals/${mealId}/completion`, {
+                date,
+                isCompleted,
+                completedAt: isCompleted ? Date.now() : null
+            });
+            if (response.data.success) {
+                return true;
+            }
+            throw new Error(response.data.message || 'Failed to update meal completion');
+        } catch (error: any) {
+            console.error('[PlansService] Error updating meal completion:', error);
+            throw error;
+        }
     }
 };
 

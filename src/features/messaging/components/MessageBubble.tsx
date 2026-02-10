@@ -90,18 +90,31 @@ const MessageBubble = React.memo(function MessageBubble({ message, showAvatar, a
     }
 
     // Reply indicator component
-    const ReplyIndicator = ({ replyTo }: { replyTo: ChatMessage['replyTo'] }) => {
-        if (!replyTo) return null;
+    const ReplyIndicator = ({ message }: { message: ChatMessage }) => {
+        // Use new reply fields first, fallback to legacy replyTo
+        const replyContent = message.replyToContent;
+        const replySenderId = message.replyToSenderId;
+        const replySenderRole = message.replyToSenderRole;
+        
+        if (!message.replyToId || !replyContent) return null;
+        
+        const getReplySenderName = () => {
+            if (replySenderRole === 'doctor') return 'نفسك';
+            if (replySenderRole === 'client') return 'المريض';
+            // Fallback to senderId inference
+            if (replySenderId === 'doctor_1') return 'نفسك';
+            return 'المريض';
+        };
         
         return (
             <View style={[styles.replyContainer, isMe ? styles.replyContainerMe : styles.replyContainerClient]}>
                 <View style={[styles.replyBar, isMe ? styles.replyBarMe : styles.replyBarClient]} />
                 <View style={styles.replyContent}>
                     <Text style={styles.replyLabel}>
-                        {t.replyTo} {replyTo.sender === 'me' ? 'نفسك' : 'المريض'}
+                        {t.replyTo} {getReplySenderName()}
                     </Text>
                     <Text style={styles.replyText} numberOfLines={1}>
-                        {replyTo.content}
+                        {replyContent}
                     </Text>
                 </View>
             </View>
@@ -118,22 +131,22 @@ const MessageBubble = React.memo(function MessageBubble({ message, showAvatar, a
             <View style={[styles.container, isMe ? styles.containerMe : styles.containerClient]}>
                 <View style={[styles.bubbleWrapper, isMe ? styles.bubbleWrapperMe : styles.bubbleWrapperClient]}>
                     {/* Reply Indicator */}
-                    <ReplyIndicator replyTo={message.replyTo} />
+                    <ReplyIndicator message={message} />
                     
                     {/* Bubble */}
                     {isMe ? (
-                        <View style={[styles.bubble, styles.bubbleMe]}>
-                            <Text style={styles.textMe}>{message.content}</Text>
-                        </View>
-                    ) : (
                         <LinearGradient
                             colors={['#5073FE', '#02C3CD']}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
-                            style={[styles.bubble, styles.bubbleClient]}
+                            style={[styles.bubble, styles.bubbleMe]}
                         >
-                            <Text style={styles.textClient}>{message.content}</Text>
+                            <Text style={styles.textMe}>{message.content}</Text>
                         </LinearGradient>
+                    ) : (
+                        <View style={[styles.bubble, styles.bubbleClient]}>
+                            <Text style={styles.textClient}>{message.content}</Text>
+                        </View>
                     )}
 
                     {/* Timestamp, read status, and edited label */}
@@ -141,7 +154,7 @@ const MessageBubble = React.memo(function MessageBubble({ message, showAvatar, a
                         {isMe && message.status === 'read' && (
                             <MaterialIcons name="done-all" size={16} color={colors.primaryDark} />
                         )}
-{isEdited && (
+                        {isEdited && (
                             <Text style={styles.editedLabel}>{t.edited}</Text>
                         )}        
                                         {isMe && message.status === 'sent' && (
@@ -186,6 +199,14 @@ const styles = StyleSheet.create({
     },
     bubbleMe: {
         borderBottomRightRadius: horizontalScale(4), // RTL: tail on left
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    bubbleClient: {
+        borderBottomLeftRadius: horizontalScale(4), // LTR: tail on left
         backgroundColor: colors.white,
         borderWidth: 1,
         borderColor: colors.primaryDark,
@@ -195,24 +216,16 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
     },
-    bubbleClient: {
-        borderBottomLeftRadius: horizontalScale(4), // LTR: tail on left
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
     textMe: {
         fontSize: ScaleFontSize(14),
         lineHeight: ScaleFontSize(20),
-        color: colors.primaryDark,
+        color: '#FFFFFF',
         textAlign: 'right',
     },
     textClient: {
         fontSize: ScaleFontSize(14),
         lineHeight: ScaleFontSize(20),
-        color: '#FFFFFF',
+        color: colors.primaryDark,
         textAlign: 'left',
     },
     metaRow: {

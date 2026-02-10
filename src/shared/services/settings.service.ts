@@ -13,6 +13,15 @@ export interface ClientSettings {
         mealReminders: boolean;
         weeklyCheckin: boolean;
         coachMessages: boolean;
+        mealReminderTime?: string;
+        timezone?: string;
+        mealRemindersSchedule?: {
+            breakfast: { enabled: boolean; time: string };
+            snack1: { enabled: boolean; time: string };
+            lunch: { enabled: boolean; time: string };
+            snack2: { enabled: boolean; time: string };
+            dinner: { enabled: boolean; time: string };
+        } | null;
     };
 }
 
@@ -20,6 +29,15 @@ export interface NotificationSettings {
     mealReminders?: boolean;
     weeklyCheckin?: boolean;
     coachMessages?: boolean;
+    mealReminderTime?: string;
+    timezone?: string;
+    mealRemindersSchedule?: {
+        breakfast: { enabled: boolean; time: string };
+        snack1: { enabled: boolean; time: string };
+        lunch: { enabled: boolean; time: string };
+        snack2: { enabled: boolean; time: string };
+        dinner: { enabled: boolean; time: string };
+    } | null;
 }
 
 export interface Doctor {
