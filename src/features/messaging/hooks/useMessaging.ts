@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ChatMessage, ChatConversation } from '../components/types';
-import { messagingService, Message, Conversation } from '@/src/shared/services/messaging.service';
+import { messagingService, Message } from '@/src/shared/services/messaging.service';
 import { SocketService } from '@/src/shared/services/socket/socket.service';
 
 // Transformation function to convert backend Message to ChatMessage
@@ -34,6 +34,7 @@ const transformMessage = (backendMessage: Message, currentUserId?: string): Chat
         sender: isMe ? 'me' : 'client',
         senderId: backendMessage.senderId,
         content: backendMessage.content,
+        createdAt: backendMessage.createdAt,
         timestamp: formatTimestamp(backendMessage.createdAt),
         status: backendMessage.isDeleted ? 'deleted' : 
                 backendMessage.isEdited ? 'edited' :
@@ -155,7 +156,7 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
             SocketService.offMessageEdited();
             SocketService.offMessageDeleted();
         };
-    }, [conversationId]);
+    }, [conversationId, currentUserId]);
 
     const addOptimisticMessage = useCallback(
         (data: {
@@ -166,13 +167,15 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
         }) => {
             if (!conversationId) return null;
             const tempId = `temp-${Date.now()}`;
+            const createdAt = new Date().toISOString();
             const newMsg: ChatMessage = {
                 id: tempId,
                 type: (data.messageType === 'voice' ? 'audio' : data.messageType || 'text') as any,
                 sender: 'me',
                 senderId: currentUserId || 'me',
                 content: data.content,
-                timestamp: new Date().toISOString(),
+                createdAt,
+                timestamp: formatTimestamp(createdAt),
                 status: 'sending',
                 isEdited: false,
                 isDeleted: false,

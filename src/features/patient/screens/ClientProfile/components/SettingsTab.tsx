@@ -6,6 +6,7 @@ import { AlertTriangle, Bell, Check, Crown, MessageCircle, User } from 'lucide-r
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { settingsService, ClientSettings, Doctor } from '@/src/shared/services/settings.service';
+import { useAppSelector } from '@/src/shared/store';
 import { t } from '../translations';
 
 // ============ TYPES ============
@@ -14,18 +15,14 @@ interface SettingsTabProps {
     clientId: string;
 }
 
-interface CurrentUser {
-    role: 'admin' | 'coach';
-}
-
 // ============ COMPONENT ============
 
 export function SettingsTab({clientId}: SettingsTabProps) {
     const router = useRouter();
+    const { user } = useAppSelector((state) => state.auth);
 
     // Local state for settings and user data
     const [settings, setSettings] = useState<ClientSettings | null | undefined>(undefined);
-    const [currentUser, setCurrentUser] = useState<CurrentUser | undefined>(undefined);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
 
     // Fetch settings and user data on mount
@@ -39,34 +36,25 @@ export function SettingsTab({clientId}: SettingsTabProps) {
         }
     }, [clientId]);
 
-    const fetchCurrentUser = useCallback(async () => {
-        // Mock current user - in real app, this would come from auth context
-        setCurrentUser({ role: 'coach' });
-    }, []);
-
     const fetchDoctors = useCallback(async () => {
         try {
             const doctorsData = await settingsService.getAvailableDoctors();
             setDoctors(doctorsData);
         } catch (error) {
             console.error('Error fetching doctors:', error);
-            // Only show error if user is admin
-            if (currentUser?.role === 'admin') {
-                setDoctors([]);
-            }
+            setDoctors([]);
         }
-    }, [currentUser]);
+    }, []);
 
     useEffect(() => {
         fetchSettings();
-        fetchCurrentUser();
-    }, [fetchSettings, fetchCurrentUser]);
+    }, [fetchSettings]);
 
     useEffect(() => {
-        if (currentUser?.role === 'admin') {
+        if (user?.role === 'admin') {
             fetchDoctors();
         }
-    }, [fetchDoctors, currentUser]);
+    }, [fetchDoctors, user]);
 
     // Backend mutation callbacks
     const updateNotifications = useCallback(async (notificationSettings: Partial<ClientSettings['notificationSettings']>) => {
@@ -105,7 +93,7 @@ export function SettingsTab({clientId}: SettingsTabProps) {
     const [showDoctorModal, setShowDoctorModal] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false);
 
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = user?.role === 'admin';
 
     const getSubscriptionLabel = (status: string): { label: string; color: string; bg: string } => {
         const configs: Record<string, { label: string; color: string; bg: string }> = {
@@ -113,8 +101,9 @@ export function SettingsTab({clientId}: SettingsTabProps) {
             trial: {label: t.subscriptionTrial, color: '#2563EB', bg: '#DBEAFE'},
             paused: {label: t.subscriptionPaused, color: '#F59E0B', bg: '#FEF3C7'},
             cancelled: {label: t.subscriptionCancelled, color: '#DC2626', bg: '#FEE2E2'},
+            none: {label: t.subscriptionNone, color: '#6B7280', bg: '#F3F4F6'},
         };
-        return configs[status] ?? configs.active;
+        return configs[status] ?? configs.none;
     };
 
     const handleToggle = async (key: 'mealReminders' | 'weeklyCheckin' | 'coachMessages', value: boolean) => {

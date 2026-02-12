@@ -65,7 +65,7 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
     }, []);
 
     // Use hook for real-time messages - messages are already transformed to ChatMessage format
-    const { messages, isLoading, sendMessage, sendVoiceMessage, hasMoreMessages, isLoadingMore, loadMoreMessages } = useChatScreen(conversationId);
+    const { messages, isLoading, sendMessage, sendVoiceMessage, updateLocal, hasMoreMessages, isLoadingMore, loadMoreMessages } = useChatScreen(conversationId);
 
     // Helper function to upload file to backend storage
     const uploadFile = useCallback(async (uri: string, mimeType: string = 'audio/m4a', filename?: string): Promise<string | null> => {
@@ -115,8 +115,11 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
         if (!selectedMessage || !editText.trim()) return;
 
         try {
-            // Edit message using API - endpoint can be added
-            console.log('Editing message:', selectedMessage.id, editText);
+            const updated = await messagingService.editMessage(selectedMessage.id, editText.trim());
+            updateLocal(selectedMessage.id, {
+                content: updated.content,
+                isEdited: updated.isEdited,
+            });
             setShowEditModal(false);
             setSelectedMessage(null);
             setEditText('');
@@ -124,17 +127,17 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
             console.error('Edit error:', error);
             Alert.alert('خطأ', t.editError);
         }
-    }, [selectedMessage, editText]);
+    }, [selectedMessage, editText, updateLocal]);
 
     const handleDelete = useCallback(async (message: ChatMessage) => {
         try {
-            // Delete message using API - endpoint can be added
-            console.log('Deleting message:', message.id);
+            await messagingService.deleteMessage(message.id);
+            updateLocal(message.id, { isDeleted: true, content: 'تم حذف هذه الرسالة' });
         } catch (error) {
             console.error('Delete error:', error);
             Alert.alert('خطأ', t.deleteError);
         }
-    }, []);
+    }, [updateLocal]);
 
     const handleOptions = useCallback(() => {
         console.log('Options menu pressed');
@@ -179,8 +182,27 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
         }
     }, [conversationId, sendMessage, uploadFile]);
 
+    const getMessageAgeMs = (message: ChatMessage | null) => {
+        if (!message?.createdAt) return 0;
+        const createdAtMs = new Date(message.createdAt).getTime();
+        if (Number.isNaN(createdAtMs)) return 0;
+        return Date.now() - createdAtMs;
+    };
+
     // Check if current user owns the selected message
-    const isMessageOwner = selectedMessage?.senderId === currentUser?._id;
+    const isMessageOwner = selectedMessage?.sender === 'me' || selectedMessage?.senderId === currentUser?._id;
+    const selectedMessageAgeMs = getMessageAgeMs(selectedMessage);
+    const canEdit =
+        !!selectedMessage &&
+        isMessageOwner &&
+        !selectedMessage.isDeleted &&
+        selectedMessage.type === 'text' &&
+        selectedMessageAgeMs <= 2 * 60 * 60 * 1000;
+    const canDelete =
+        !!selectedMessage &&
+        isMessageOwner &&
+        !selectedMessage.isDeleted &&
+        selectedMessageAgeMs <= 24 * 60 * 60 * 1000;
 
     // Show loading state
     if (isLoading && conversationId) {
@@ -241,6 +263,8 @@ export default function ChatScreen({ conversation, conversationId, onBack }: Pro
                 visible={showActionSheet}
                 message={selectedMessage}
                 isOwner={isMessageOwner}
+                canEdit={canEdit}
+                canDelete={canDelete}
                 onClose={() => {
                     setShowActionSheet(false);
                     setSelectedMessage(null);

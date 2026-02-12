@@ -48,6 +48,8 @@ interface Props {
     visible: boolean;
     message: ChatMessage | null;
     isOwner: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
     onClose: () => void;
     onReply: (message: ChatMessage) => void;
     onEdit: (message: ChatMessage) => void;
@@ -69,6 +71,8 @@ export default function MessageActionsSheet({
     visible,
     message,
     isOwner,
+    canEdit,
+    canDelete,
     onClose,
     onReply,
     onEdit,
@@ -152,7 +156,7 @@ export default function MessageActionsSheet({
             bgColor: 'rgba(239, 68, 68, 0.1)',
             title: t.undoSend,
             onPress: handleDelete,
-            hidden: !isOwner || message.isDeleted,
+            hidden: !isOwner || !canDelete,
         },
         {
             id: 'edit',
@@ -161,7 +165,7 @@ export default function MessageActionsSheet({
             bgColor: 'rgba(245, 158, 11, 0.1)',
             title: t.edit,
             onPress: handleEdit,
-            hidden: !isOwner || message.isDeleted || message.type !== 'text',
+            hidden: !isOwner || !canEdit,
         },
         {
             id: 'copy',

@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     onlineDot: {
         position: 'absolute',
         bottom: 0,
-        right: 0, // RTL: left side
+        right: 0, // RTL: right side
         width: horizontalScale(10),
         height: horizontalScale(10),
         borderRadius: horizontalScale(5),

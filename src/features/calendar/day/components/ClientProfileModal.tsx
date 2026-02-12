@@ -23,7 +23,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // TYPES
 // =============================================================================
 
-interface ClientProfile {
+export interface ClientProfile {
     _id: string;
     firstName: string;
     lastName?: string;
@@ -31,7 +31,7 @@ interface ClientProfile {
     height?: number;
     currentWeight: number;
     targetWeight: number;
-    subscriptionStatus: 'active' | 'paused' | 'cancelled' | 'trial';
+    subscriptionStatus: 'active' | 'paused' | 'cancelled' | 'trial' | 'none';
     activityLevel?: string; // This stores medical conditions
 }
 
@@ -124,6 +124,7 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
 
     const fullName = `${client.firstName} ${client.lastName || ''}`.trim();
     const medicalConditions = parseMedicalConditions(client.activityLevel);
+    const hasAlertsData = typeof client.activityLevel === 'string' && client.activityLevel.trim().length > 0;
     const subscriptionLabel = getSubscriptionLabel(client.subscriptionStatus);
     const initials = getInitials(client.firstName, client.lastName);
 
@@ -191,23 +192,25 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
                     </View>
 
                     {/* Medical Alerts Section */}
-                    <View style={styles.alertsSection}>
-                        <Text style={styles.alertsTitle}>{t.medicalAlerts}</Text>
-                        <View style={[styles.alertsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                            {medicalConditions.length > 0 ? (
-                                medicalConditions.map((condition, index) => (
-                                    <View key={index} style={styles.alertChip}>
-                                        <Text style={styles.alertIcon}>
-                                            {getConditionIcon(condition)}
-                                        </Text>
-                                        <Text style={styles.alertText}>{condition}</Text>
-                                    </View>
-                                ))
-                            ) : (
-                                <Text style={styles.noAlertsText}>{t.noAlerts}</Text>
-                            )}
+                    {hasAlertsData ? (
+                        <View style={styles.alertsSection}>
+                            <Text style={styles.alertsTitle}>{t.medicalAlerts}</Text>
+                            <View style={[styles.alertsRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}> 
+                                {medicalConditions.length > 0 ? (
+                                    medicalConditions.map((condition, index) => (
+                                        <View key={index} style={styles.alertChip}>
+                                            <Text style={styles.alertIcon}>
+                                                {getConditionIcon(condition)}
+                                            </Text>
+                                            <Text style={styles.alertText}>{condition}</Text>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <Text style={styles.noAlertsText}>{t.noAlerts}</Text>
+                                )}
+                            </View>
                         </View>
-                    </View>
+                    ) : null}
 
                     {/* Close Button */}
                     <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>

@@ -58,7 +58,7 @@ export default function DoctorDashboard() {
     const { isConnected } = useSocket();
 
     // Use new backend hooks instead of Convex
-    const { user } = useCurrentUser();
+    const { user, refetch: refetchUser } = useCurrentUser();
     const { data: dashboardStats, refetch: refetchStats } = useDashboardStats();
     const userName = user?.firstName || 'Doctor';
 
@@ -116,6 +116,7 @@ export default function DoctorDashboard() {
         setRefreshing(true);
         try {
             await Promise.all([
+                refetchUser(),
                 refetchStats(),
                 refetchInbox(),
                 refetchAttention(),
@@ -130,6 +131,7 @@ export default function DoctorDashboard() {
             setRefreshing(false);
         }
     }, [
+        refetchUser,
         refetchStats,
         refetchInbox,
         refetchAttention,
@@ -180,9 +182,10 @@ export default function DoctorDashboard() {
                 router.push('/doctor/messages' as any);
                 break;
             case 'meal-plans':
-                router.push('/doctor/meals' as any);
+                router.push('/doctor/plans' as any);
                 break;
             case 'analytics':
+                router.push('/doctor/analytics' as any);
                 break;
             case 'client-profile':
                 break;
@@ -221,18 +224,18 @@ export default function DoctorDashboard() {
         {
             icon: <Users size={horizontalScale(22)} color="#16A34A" />,
             iconBgColor: '#DCFCE7',
-            value: (dashboardStats as any)?.activeClients?.toString() || '0',
+            value: dashboardStats?.activeClients?.toString() || '0',
             label: t.activeClients,
-            trend: (dashboardStats as any)?.activeClientsTrend !== undefined
-                ? `${(dashboardStats as any)?.activeClientsTrendUp ? '+' : '-'}${(dashboardStats as any)?.activeClientsTrend}% ${t.thisMonth}`
+            trend: dashboardStats?.activeClientsTrend !== undefined
+                ? `${dashboardStats?.activeClientsTrendUp ? '+' : '-'}${dashboardStats?.activeClientsTrend}% ${t.thisMonth}`
                 : undefined,
-            trendUp: (dashboardStats as any)?.activeClientsTrendUp ?? true,
+            trendUp: dashboardStats?.activeClientsTrendUp ?? true,
             onPress: () => navigateTo('clients'),
         },
         {
             icon: <Ionicons name="scale" size={horizontalScale(22)} color="#F59E0B" />,
             iconBgColor: '#FEF3C7',
-            value: (dashboardStats as any)?.unreviewedWeightLogs?.toString() || '0',
+            value: dashboardStats?.unreviewedWeightLogs?.toString() || '0',
             label: t.weightLogs,
             subtext: t.needsReview,
             onPress: () => navigateTo('clients'),
@@ -240,7 +243,7 @@ export default function DoctorDashboard() {
         {
             icon: <MessageSquare size={horizontalScale(22)} color="#2563EB" />,
             iconBgColor: '#DBEAFE',
-            value: totalUnread?.toString() || '0',
+            value: dashboardStats?.unreadMessages?.toString() || totalUnread?.toString() || '0',
             label: t.unreadMessages,
             subtext: unreadSubtext,
             onPress: () => navigateTo('messages'),
@@ -248,7 +251,7 @@ export default function DoctorDashboard() {
         {
             icon: <FileText size={horizontalScale(22)} color="#DC2626" />,
             iconBgColor: '#FEE2E2',
-            value: (dashboardStats as any)?.plansExpiring?.toString() || '0',
+            value: dashboardStats?.plansExpiring?.toString() || '0',
             label: t.plansExpiring,
             subtext: t.inNextDays,
             onPress: () => navigateTo('meal-plans'),

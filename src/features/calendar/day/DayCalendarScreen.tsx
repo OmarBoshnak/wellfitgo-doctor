@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verticalScale } from '@/src/core/utils/scaling';
@@ -12,9 +12,11 @@ import DayCurrentTimeLine from './components/DayCurrentTimeLine';
 import FloatingAddButton from './components/FloatingAddButton';
 import AddCallModal from './components/AddCallModal';
 import EditEventModal from './components/EditEventModal';
-import ClientProfileModal from './components/ClientProfileModal';
+import ClientProfileModal, { ClientProfile } from './components/ClientProfileModal';
 import { colors } from '@/src/core/constants/Theme';
 import { usePhoneCall } from '@/src/hooks/usePhoneCall';
+import { clientsService } from '@/src/shared/services/clients.service';
+import { settingsService } from '@/src/shared/services/settings.service';
 
 // ============================================================
 // HELPER: Convert event to DayEvent for rendering
@@ -47,6 +49,21 @@ const convertToDisplayEvent = (event: any): DayEvent & { clientPhone?: string } 
     };
 };
 
+const normalizeSubscriptionStatus = (
+    status?: string
+): ClientProfile['subscriptionStatus'] => {
+    switch (status) {
+        case 'active':
+        case 'paused':
+        case 'cancelled':
+        case 'trial':
+        case 'none':
+            return status;
+        default:
+            return 'none';
+    }
+};
+
 // ============================================================
 // DAY CALENDAR SCREEN
 // ============================================================
@@ -62,7 +79,9 @@ export const DayCalendarScreen: React.FC = () => {
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [optimisticEvents, setOptimisticEvents] = useState<any[]>([]);
     const [convexEvents, setConvexEvents] = useState<any[]>([]);
-    const [clientProfile, setClientProfile] = useState<any>(null);
+    const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+    const [isProfileLoading, setIsProfileLoading] = useState(false);
+    const clientProfileCache = useRef<Record<string, ClientProfile>>({});
 
     // Phone call hook
     const { callClient } = usePhoneCall();
@@ -90,19 +109,66 @@ export const DayCalendarScreen: React.FC = () => {
         fetchEvents();
     }, [isoDate]);
 
-    // Fetch selected client profile for modal - mocked
+    // Fetch selected client profile for modal
     useEffect(() => {
-        if (selectedClientId) {
-            // Mock profile fetch
-            setClientProfile({
-                id: selectedClientId,
-                name: 'Mock Client',
-                phone: '+1234567890',
-                email: 'mock@example.com',
-                avatar: 'https://i.pravatar.cc/150?u=' + selectedClientId
-            });
+        if (!showProfileModal || !selectedClientId) return;
+
+        const cachedProfile = clientProfileCache.current[selectedClientId];
+        if (cachedProfile) {
+            setClientProfile(cachedProfile);
+            return;
         }
-    }, [selectedClientId]);
+
+        let isActive = true;
+        const fetchProfile = async () => {
+            try {
+                setIsProfileLoading(true);
+
+                const [{ clients }, progress, settings] = await Promise.all([
+                    clientsService.getClients('all', '', 1, 200),
+                    clientsService.getClientProgress(selectedClientId),
+                    settingsService.getClientSettings(selectedClientId),
+                ]);
+
+                const client = clients.find((item) => item.id === selectedClientId);
+                if (!client) {
+                    throw new Error('Client not found in list');
+                }
+
+                const profile: ClientProfile = {
+                    _id: client.id,
+                    firstName: client.firstName,
+                    lastName: client.lastName,
+                    avatarUrl: client.avatar || undefined,
+                    height: progress.height ?? client.height,
+                    currentWeight: progress.currentWeight ?? client.currentWeight,
+                    targetWeight: progress.targetWeight ?? client.targetWeight,
+                    subscriptionStatus: normalizeSubscriptionStatus(settings.subscriptionStatus),
+                    activityLevel: undefined,
+                };
+
+                if (isActive) {
+                    clientProfileCache.current[selectedClientId] = profile;
+                    setClientProfile(profile);
+                }
+            } catch (error) {
+                console.error('[DayCalendarScreen] Error fetching client profile:', error);
+                if (isActive) {
+                    setClientProfile(null);
+                }
+            } finally {
+                if (isActive) {
+                    setIsProfileLoading(false);
+                }
+            }
+        };
+
+        fetchProfile();
+
+        return () => {
+            isActive = false;
+        };
+    }, [showProfileModal, selectedClientId]);
 
     // Combine Convex events with optimistic updates
     const allEvents = [...(convexEvents || []), ...optimisticEvents];
@@ -262,8 +328,10 @@ export const DayCalendarScreen: React.FC = () => {
                 onClose={() => {
                     setShowProfileModal(false);
                     setSelectedClientId(null);
+                    setClientProfile(null);
                 }}
                 client={clientProfile || null}
+                isLoading={isProfileLoading}
             />
         </SafeAreaView>
     );

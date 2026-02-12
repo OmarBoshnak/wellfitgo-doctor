@@ -144,27 +144,6 @@ export const DayEventCard: React.FC<DayEventCardProps> = ({
                         styles.cardFooter,
                         { flexDirection: isRTL ? 'row' : 'row-reverse' }
                     ]}>
-                        <View style={[
-                            styles.clientInfo,
-                            { flexDirection: isRTL ? 'row' : 'row-reverse' }
-                        ]}>
-                            <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.7}>
-                                {event.clientAvatar ? (
-                                    <Image
-                                        source={{ uri: event.clientAvatar }}
-                                        style={styles.clientAvatar}
-                                    />
-                                ) : (
-                                    <View style={styles.clientInitialsContainer}>
-                                        <Text style={styles.clientInitials}>
-                                            {event.clientInitials}
-                                        </Text>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                            <Text style={styles.clientName}>{event.clientName}</Text>
-                        </View>
-
                         <TouchableOpacity
                             style={[
                                 styles.actionButton,
@@ -185,6 +164,28 @@ export const DayEventCard: React.FC<DayEventCardProps> = ({
                                 <Phone size={horizontalScale(14)} color={scheme.actionText} />
                             )}
                         </TouchableOpacity>
+                                                <View style={[
+                            styles.clientInfo,
+                            { flexDirection: isRTL ? 'row' : 'row-reverse' }
+                        ]}>
+                            <Text style={styles.clientName}>{event.clientName}</Text>
+                                                 <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.7}>
+                                {event.clientAvatar ? (
+                                    <Image
+                                        source={{ uri: event.clientAvatar }}
+                                        style={styles.clientAvatar}
+                                    />
+                                ) : (
+                                    <View style={styles.clientInitialsContainer}>
+                                        <Text style={styles.clientInitials}>
+                                            {event.clientInitials}
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity> 
+                        </View>
+
+
                     </View>
                 </TouchableOpacity>
             </View>

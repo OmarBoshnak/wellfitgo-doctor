@@ -152,17 +152,6 @@ export default function MessagesScreen() {
         console.log('Delete message:', messageId);
     }, []);
 
-    // Show chat screen if a conversation is selected
-    if (selectedConversation) {
-        return (
-            <ChatScreen
-                conversation={selectedConversation}
-                conversationId={selectedConversationId || undefined}
-                onBack={handleBack}
-            />
-        );
-    }
-
     const renderItem = useCallback(({ item }: { item: Message }) => (
         <MessageItem
             message={item}
@@ -173,6 +162,17 @@ export default function MessagesScreen() {
     ), [handleMessagePress, handleArchive, handleDelete]);
 
     const keyExtractor = useCallback((item: Message) => item.id, []);
+
+    // Show chat screen if a conversation is selected
+    if (selectedConversation) {
+        return (
+            <ChatScreen
+                conversation={selectedConversation}
+                conversationId={selectedConversationId || undefined}
+                onBack={handleBack}
+            />
+        );
+    }
 
     // Show loading state
     if (isLoading) {

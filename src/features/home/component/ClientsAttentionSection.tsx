@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { isRTL, doctorTranslations as t, translateName, attentionTranslations as at } from '@/src/i18n';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { colors } from '@/src/core/constants/Theme';
@@ -43,6 +43,17 @@ function getStatusColor(statusType: string) {
         default:
             return { bg: '#F3F4F6', text: '#374151', border: '#9CA3AF' };
     }
+}
+
+function formatDateOnly(value?: string) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 // ============ SUB-COMPONENTS ============
@@ -112,6 +123,8 @@ export function ClientsAttentionSection({
     onMessagePress,
     onRetry
 }: ClientsAttentionSectionProps) {
+    const [expandedStatusId, setExpandedStatusId] = React.useState<string | null>(null);
+
     // Loading state
     if (isLoading) {
         return <SkeletonLoader />;
@@ -138,6 +151,10 @@ export function ClientsAttentionSection({
 
             {clients.map((client) => {
                 const statusColors = getStatusColor(client.statusType);
+                const lastActiveDate = formatDateOnly(client.lastActive);
+                const statusLabel =  lastActiveDate
+                    ? `${t.lastActive} ${lastActiveDate}`
+                    : client.status;
                 return (
                     <TouchableOpacity
                         key={client.id}
@@ -153,19 +170,25 @@ export function ClientsAttentionSection({
                         {client.avatar ? (
                             <Image
                                 source={{ uri: client.avatar }}
-                                style={[styles.clientAvatar, isRTL ? { marginLeft: horizontalScale(12) } : { marginRight: horizontalScale(12) }]}
+                                style={[
+                                    styles.clientAvatar,
+                                    isRTL ? { marginLeft: horizontalScale(12) } : { marginRight: horizontalScale(12) }
+                                ]}
                             />
                         ) : (
-                            <View style={[
-                                styles.clientAvatar,
-                                styles.avatarFallback,
-                                isRTL ? { marginLeft: horizontalScale(12) } : { marginRight: horizontalScale(12) }
-                            ]}>
+                            <View
+                                style={[
+                                    styles.clientAvatar,
+                                    styles.avatarFallback,
+                                    isRTL ? { marginLeft: horizontalScale(12) } : { marginRight: horizontalScale(12) }
+                                ]}
+                            >
                                 <Text style={styles.avatarFallbackText}>
                                     {client.name?.charAt(0)?.toUpperCase() || '?'}
                                 </Text>
                             </View>
                         )}
+
                         <View style={styles.clientInfo}>
                             <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
                                 <Text style={[styles.clientName, { textAlign: isRTL ? 'right' : 'left' }]}>
@@ -173,24 +196,24 @@ export function ClientsAttentionSection({
                                 </Text>
                             </View>
                             <View style={[styles.statusRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                                <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+                                <TouchableOpacity
+                                    style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
+                                    activeOpacity={0.7}
+                                    onPress={(e) => {
+                                        e.stopPropagation();
+                                        setExpandedStatusId((prev) => (prev === client.id ? null : client.id));
+                                    }}
+                                >
                                     <Text style={[styles.statusText, { color: statusColors.text }]}>
-                                        {client.status}
+                                        {statusLabel}
                                     </Text>
-                                </View>
+                                </TouchableOpacity>
                                 {client.feeling && (
                                     <Text style={styles.feelingEmoji}>{client.feeling}</Text>
                                 )}
                             </View>
-                            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', paddingHorizontal: horizontalScale(10) }}>
-                                {client.lastActive && (
-                                    <Text style={[styles.lastActiveText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                                        {t.lastActive} {client.lastActive}
-                                    </Text>
-                                )}
-
-                            </View>
                         </View>
+
                         <TouchableOpacity
                             style={styles.messageButton}
                             onPress={(e) => {

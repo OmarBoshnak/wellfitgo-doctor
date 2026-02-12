@@ -76,9 +76,9 @@ const MessageBubble = React.memo(function MessageBubble({ message, showAvatar, a
             >
                 <View style={[styles.container, isMe ? styles.containerMe : styles.containerClient]}>
                     <View style={[styles.bubbleWrapper, isMe ? styles.bubbleWrapperMe : styles.bubbleWrapperClient]}>
-                        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleDeleted]}>
-                            <MaterialIcons name="block" size={16} color="#9CA3AF" style={styles.deletedIcon} />
+                        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleDeleted,{flexDirection:'row'}]}>
                             <Text style={[styles.textDeleted, { textAlign: isMe ? 'right' : 'left' }]}>{t.deleted}</Text>
+                            <MaterialIcons name="block" size={16} color="#9CA3AF" style={styles.deletedIcon} />
                         </View>
                         <View style={[styles.metaRow, isMe ? styles.metaRowMe : styles.metaRowClient, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                             <Text style={styles.timestamp}>{message.timestamp}</Text>
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     },
     bubble: {
         padding: horizontalScale(12),
-        borderRadius: horizontalScale(16),
+        borderRadius: horizontalScale(30),
     },
     bubbleMe: {
         borderBottomRightRadius: horizontalScale(4), // RTL: tail on left

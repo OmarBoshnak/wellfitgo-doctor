@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     onlineDot: {
         position: 'absolute',
         bottom: 0,
-        left: 0, // RTL: Dot on left of avatar
+        right: 0, // RTL: Dot on right of avatar
         width: horizontalScale(14),
         height: horizontalScale(14),
         borderRadius: horizontalScale(7),

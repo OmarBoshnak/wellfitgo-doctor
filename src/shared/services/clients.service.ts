@@ -86,6 +86,8 @@ const transformClient = (backendClient: BackendClient): Client => ({
     subscriptionStatus: backendClient.subscriptionStatus,
     createdAt: '', // Not returned from backend
     daysSinceJoined: backendClient.daysSinceJoined,
+    unreadMessages: backendClient.unreadMessages || 0,
+    needsAttention: backendClient.needsAttention || false,
 });
 
 // API Functions

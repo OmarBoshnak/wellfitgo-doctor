@@ -44,6 +44,16 @@ export function NotificationPanel({
     // Use the notifications hook for backend integration
     const { notifications, isLoading, markAsRead, markAllAsRead, refetch } = useNotifications();
 
+    const formatTime = (value: string) => {
+        if (!value.includes(':')) return value;
+
+        const timeMatch = value.match(/^\d{1,2}:\d{2}:\d{2}/);
+        if (!timeMatch) return value;
+
+        const [hours, minutes] = timeMatch[0].split(':');
+        return value.replace(timeMatch[0], `${hours}:${minutes}`);
+    };
+
     // Refetch when panel becomes visible
     React.useEffect(() => {
         if (visible) {
@@ -76,10 +86,17 @@ export function NotificationPanel({
     };
 
     // Render individual notification item
+    const handleNotificationPress = (item: NotificationItem) => {
+        if (!item.isRead) {
+            void markAsRead([item.id]);
+        }
+        onNotificationPress?.(item);
+    };
+
     const renderNotificationItem = ({ item }: { item: NotificationItem }) => (
         <TouchableOpacity
             style={[styles.notificationItem, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}
-            onPress={() => onNotificationPress?.(item)}
+            onPress={() => handleNotificationPress(item)}
             activeOpacity={0.7}
         >
             {/* Unread indicator */}
@@ -103,7 +120,7 @@ export function NotificationPanel({
                 <Text
                     style={[styles.timestamp, { textAlign: isRTL ? 'right' : 'left' }]}
                 >
-                    {item.relativeTime}
+                    {formatTime(item.relativeTime)}
                 </Text>
             </View>
 

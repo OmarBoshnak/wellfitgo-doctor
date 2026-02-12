@@ -5,6 +5,7 @@ export interface ChatMessage {
     sender: 'me' | 'client';
     senderId?: string; // Convex user ID for ownership checks
     content: string;
+    createdAt?: string;
     timestamp: string;
     status: 'sending' | 'sent' | 'read' | 'edited' | 'deleted';
     isEdited?: boolean;

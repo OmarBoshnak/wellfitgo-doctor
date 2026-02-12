@@ -27,6 +27,10 @@ export interface Client {
     targetWeight: number;
     progress: number;
 
+    // Engagement
+    unreadMessages: number;
+    needsAttention: boolean;
+
     // Weekly check-in
     weeklyCheckinDay: DayFilter;
     weeklyCheckinEnabled: boolean;

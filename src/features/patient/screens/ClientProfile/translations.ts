@@ -62,6 +62,7 @@ export const t = {
     subscriptionPaused: isRTL ? 'متوقف' : 'Paused',
     subscriptionTrial: isRTL ? 'تجريبي' : 'Trial',
     subscriptionCancelled: isRTL ? 'ملغي' : 'Cancelled',
+    subscriptionNone: isRTL ? 'بدون اشتراك' : 'No Subscription',
     notifications: isRTL ? 'الإشعارات' : 'Notifications',
     mealReminders: isRTL ? 'تذكير الوجبات' : 'Meal Reminders',
     weeklyCheckin: isRTL ? 'تذكير الوزن الأسبوعي' : 'Weekly Check-in',

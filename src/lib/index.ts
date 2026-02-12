@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { dashboardService } from '@/src/shared/services/dashboard.service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Types
 export interface User {
     firstName: string;
+    lastName?: string;
     avatarUrl?: string;
 }
 
@@ -13,6 +15,8 @@ export interface DashboardStats {
     plansExpiring: number;
     activeClientsTrend: number;
     activeClientsTrendUp: boolean;
+    unreadMessages: number;
+    todayAppointments: number;
 }
 
 export interface InboxStats {
@@ -28,12 +32,36 @@ export interface InboxStats {
 // Hooks
 
 export const useCurrentUser = () => {
-    return {
-        user: {
-            firstName: 'Omar',
-            avatarUrl: undefined,
-        } as User,
-    };
+    const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchUser = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const userStr = await AsyncStorage.getItem('user');
+            if (userStr) {
+                const parsed = JSON.parse(userStr);
+                setUser({
+                    firstName: parsed.firstName || 'Doctor',
+                    lastName: parsed.lastName,
+                    avatarUrl: parsed.avatarUrl,
+                });
+            } else {
+                setUser({ firstName: 'Doctor' });
+            }
+        } catch (err) {
+            console.error('[useCurrentUser] Error reading user from storage:', err);
+            setUser({ firstName: 'Doctor' });
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUser();
+    }, [fetchUser]);
+
+    return { user, isLoading, refetch: fetchUser };
 };
 
 export const useDashboardStats = () => {
@@ -57,6 +85,8 @@ export const useDashboardStats = () => {
                 plansExpiring: 0,
                 activeClientsTrend: 0,
                 activeClientsTrendUp: true,
+                unreadMessages: 0,
+                todayAppointments: 0,
             });
         } finally {
             setIsLoading(false);
@@ -146,6 +176,17 @@ export const useClientsNeedingAttention = (limit: number) => {
                     plan_expiring: 'late_message',
                 };
 
+                // Compute days since last check-in from lastActivity
+                let daysSinceCheckin: number | null = null;
+                if (client.lastActivity && client.lastActivity !== 'غير معروف') {
+                    const lastDate = new Date(client.lastActivity);
+                    if (!isNaN(lastDate.getTime())) {
+                        daysSinceCheckin = Math.floor(
+                            (Date.now() - lastDate.getTime()) / 86400000
+                        );
+                    }
+                }
+
                 return {
                     id: client.id,
                     name: client.name,
@@ -154,6 +195,10 @@ export const useClientsNeedingAttention = (limit: number) => {
                     statusType: statusTypeMap[client.severity] || 'info',
                     attentionType: attentionTypeMap[client.issue] || 'missing_checkin',
                     lastActive: client.lastActivity,
+                    daysSinceCheckin,
+                    weightChange: undefined,
+                    feeling: undefined,
+                    lastMessageTime: client.unreadMessages ? Date.now() : undefined,
                 };
             });
 
@@ -228,7 +273,7 @@ export const useTodaysAppointments = (limit: number) => {
                     time: timeString,
                     clientPhone: apt.clientPhone,
                     type: 'phone' as const, // Default to phone, backend doesn't distinguish video/phone yet
-                    avatar: apt.clientAvatar || `https://i.pravatar.cc/150?u=${apt.clientId}`,
+                    avatar: apt.clientAvatar || '',
                     duration: `${apt.duration} min`,
                     status,
                 };
@@ -332,6 +377,7 @@ export const useRecentActivity = (limit: number) => {
                 else if (activity.type === 'meal_completed') type = 'meal_completed';
                 else if (activity.type === 'plan_assigned') type = 'plan_published';
                 else if (activity.type === 'client_assigned') type = 'new_client';
+                else if (activity.type === 'reminder_sent') type = 'checkin';
 
                 // Format time
                 const now = new Date();

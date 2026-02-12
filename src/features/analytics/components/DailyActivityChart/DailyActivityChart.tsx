@@ -27,37 +27,42 @@ const getDayLabel = (dateStr: string): string => {
     const date = new Date(dateStr);
     const dayIndex = date.getDay();
     const dayLabelsEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayLabelsAr = ['س', 'أح', 'إث', 'ث', 'أر', 'خ', 'ج'];
+    const dayLabelsAr = ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
     return isRTL ? dayLabelsAr[dayIndex] : dayLabelsEn[dayIndex];
 };
 
 export const DailyActivityChart: React.FC<DailyActivityChartProps> = ({
     data,
 }) => {
-    if (!data || data.length === 0) {
-        return null;
-    }
+    const sortedData = useMemo(() => {
+        if (!data?.length) return [];
+
+        const saturdayIndex = data.findIndex(day => new Date(day.date).getDay() === 6);
+        if (saturdayIndex <= 0) return data;
+
+        return data.slice(saturdayIndex).concat(data.slice(0, saturdayIndex));
+    }, [data]);
 
     // Calculate bar chart max values
     const maxMessages = useMemo(() => {
-        if (!data?.length) return 1;
-        return Math.max(...data.map(d => d.messages), 1);
-    }, [data]);
+        if (!sortedData.length) return 1;
+        return Math.max(...sortedData.map(d => d.messages), 1);
+    }, [sortedData]);
 
     const maxPlans = useMemo(() => {
-        if (!data?.length) return 1;
-        return Math.max(...data.map(d => d.plans), 1);
-    }, [data]);
+        if (!sortedData.length) return 1;
+        return Math.max(...sortedData.map(d => d.plans), 1);
+    }, [sortedData]);
 
     const maxCheckIns = useMemo(() => {
-        if (!data?.length) return 1;
-        return Math.max(...data.map(d => d.checkIns), 1);
-    }, [data]);
+        if (!sortedData.length) return 1;
+        return Math.max(...sortedData.map(d => d.checkIns), 1);
+    }, [sortedData]);
 
     // Calculate totals for daily activity
     const activityTotals = useMemo(() => {
-        if (!data?.length) return { messages: 0, plans: 0, checkIns: 0 };
-        return data.reduce(
+        if (!sortedData.length) return { messages: 0, plans: 0, checkIns: 0 };
+        return sortedData.reduce(
             (acc, day) => ({
                 messages: acc.messages + day.messages,
                 plans: acc.plans + day.plans,
@@ -65,7 +70,11 @@ export const DailyActivityChart: React.FC<DailyActivityChartProps> = ({
             }),
             { messages: 0, plans: 0, checkIns: 0 }
         );
-    }, [data]);
+    }, [sortedData]);
+
+    if (!sortedData.length) {
+        return null;
+    }
 
     return (
         <View style={styles.chartCard}>
@@ -74,7 +83,7 @@ export const DailyActivityChart: React.FC<DailyActivityChartProps> = ({
             </Text>
 
             <View style={[styles.barChartContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                {data.map((day, index) => (
+                {sortedData.map((day, index) => (
                     <View key={day.date} style={styles.barColumn}>
                         <View style={styles.barsWrapper}>
                             <View

@@ -24,6 +24,11 @@ import {
     CheckCircle,
     UserPlus,
     UserX,
+    TrendingDown,
+    TrendingUp,
+    MessageCircle,
+    Sparkles,
+    Eye,
 } from 'lucide-react-native';
 import { colors, gradients } from '@/src/core/constants/Theme';
 import { isRTL } from '@/src/core/constants/translation';
@@ -57,6 +62,18 @@ const t = {
     noClients: isRTL ? 'لا يوجد عملاء' : 'No clients',
     noClientsSubtext: isRTL ? 'لم يتم العثور على عملاء لهذا اليوم' : 'No clients found for this day',
     reminderTime: isRTL ? 'وقت التذكير' : 'Reminder time',
+    // Progress & Footer
+    start: isRTL ? 'البداية' : 'Start',
+    current: isRTL ? 'الحالي' : 'Current',
+    target: isRTL ? 'الهدف' : 'Target',
+    lost: isRTL ? 'فقد' : 'lost',
+    gained: isRTL ? 'زاد' : 'gained',
+    newClient: isRTL ? 'جديد' : 'New',
+    attention: isRTL ? 'يحتاج متابعة' : 'Needs Attention',
+    unreadCount: isRTL
+        ? (count: number) => `${count} رسائل`
+        : (count: number) => `${count} unread`,
+    active: isRTL ? 'نشط' : 'Active',
 };
 
 
@@ -270,32 +287,104 @@ export default function ClientsScreen() {
                 </TouchableOpacity>
 
                 {/* Progress Section */}
-                <View style={styles.progressSection}>
-                    <View style={[styles.progressHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
-                        <Text style={styles.progressPercentage}>{client.progress}%</Text>
-                        <Text style={styles.progressLabel}>{t.weightProgress}</Text>
-                    </View>
-                    <View style={[styles.weightFlow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                        <Text style={styles.weightText}>
-                            {client.targetWeight} kg
-                            <Text style={styles.weightArrow}> {isRTL ? '←' : '→'} </Text>
-                            {client.currentWeight} kg
-                        </Text>
-                    </View>
-                    <View style={styles.progressBarContainer}>
-                        <LinearGradient
-                            colors={gradients.primary}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[styles.progressBarFill, { width: `${client.progress}%` }]}
-                        />
-                    </View>
-                </View>
+                {(() => {
+                    const weightChange = client.startWeight - client.currentWeight;
+                    const isLosing = weightChange > 0;
+                    const progressColor =
+                        client.progress >= 70 ? colors.success :
+                            client.progress >= 30 ? colors.warning : colors.error;
+                    const changeColor = isLosing ? colors.success : colors.error;
+                    const clampedProgress = Math.min(100, Math.max(0, client.progress));
+
+                    return (
+                        <View style={styles.progressSection}>
+                            {/* Header: Label + Percentage */}
+                            <View style={[styles.progressHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <View style={[styles.progressPercentageContainer, { backgroundColor: `${progressColor}15` }]}>
+                                    <Text style={[styles.progressPercentage, { color: progressColor }]}>
+                                        {client.progress}%
+                                    </Text>
+                                </View>
+                                <Text style={styles.progressLabel}>{t.weightProgress}</Text>
+                            </View>
+
+                            {/* Weight Flow: Start → Current → Target */}
+                            <View style={[styles.weightFlowContainer, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                                <View style={styles.weightItem}>
+                                    <Text style={styles.weightItemLabel}>{t.start}</Text>
+                                    <Text style={styles.weightItemValue}>{client.startWeight.toFixed(1)}</Text>
+                                </View>
+                                <View style={styles.weightFlowArrow}>
+                                    <Text style={styles.weightArrowText}>{isRTL ? '←' : '→'}</Text>
+                                </View>
+                                <View style={styles.weightItem}>
+                                    <Text style={styles.weightItemLabel}>{t.current}</Text>
+                                    <Text style={[styles.weightItemValue, styles.weightItemCurrent, { color: changeColor }]}>
+                                        {client.currentWeight.toFixed(1)}
+                                    </Text>
+                                </View>
+                                <View style={styles.weightFlowArrow}>
+                                    <Text style={styles.weightArrowText}>{isRTL ? '←' : '→'}</Text>
+                                </View>
+                                <View style={styles.weightItem}>
+                                    <Text style={styles.weightItemLabel}>{t.target}</Text>
+                                    <Text style={[styles.weightItemValue, { color: colors.primaryDark }]}>
+                                        {client.targetWeight.toFixed(1)}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            {/* Weight Change Badge */}
+                            {weightChange !== 0 && (
+                                <View style={[styles.weightChangeBadge, {
+                                    backgroundColor: `${changeColor}12`,
+                                    flexDirection: isRTL ? 'row' : 'row-reverse',
+                                    alignSelf: isRTL ? 'flex-end' : 'flex-start',
+                                }]}>
+                                    {isLosing ? (
+                                        <TrendingDown size={horizontalScale(12)} color={changeColor} />
+                                    ) : (
+                                        <TrendingUp size={horizontalScale(12)} color={changeColor} />
+                                    )}
+                                    <Text style={[styles.weightChangeText, { color: changeColor }]}>
+                                        {isLosing ? '−' : '+'}{Math.abs(weightChange).toFixed(1)} kg {isLosing ? t.lost : t.gained}
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Progress Bar with Milestones */}
+                            <View style={styles.progressBarWrapper}>
+                                <View style={styles.progressBarContainer}>
+                                    <LinearGradient
+                                        colors={client.progress >= 70 ? gradients.success : client.progress >= 30 ? gradients.warning : gradients.error}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={[styles.progressBarFill, { width: `${clampedProgress}%` }]}
+                                    />
+                                </View>
+                                {/* Milestone Markers */}
+                                <View style={styles.milestoneContainer}>
+                                    {[25, 50, 75].map((milestone) => (
+                                        <View
+                                            key={milestone}
+                                            style={[
+                                                styles.milestoneDot,
+                                                { left: `${milestone}%` },
+                                                clampedProgress >= milestone && styles.milestoneDotReached,
+                                            ]}
+                                        />
+                                    ))}
+                                </View>
+                            </View>
+                        </View>
+                    );
+                })()}
 
                 {/* Footer */}
-                <View style={styles.cardFooter}>
+                <View style={[styles.cardFooter, client.needsAttention && styles.cardFooterWarning]}>
                     {/* Info Badges */}
                     <View style={[styles.infoBadges, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                        {/* Check-in Badge */}
                         <View style={[styles.infoBadge, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                             <Text
                                 style={[
@@ -308,7 +397,37 @@ export default function ClientsScreen() {
                                     isNewClient ? client.daysSinceJoined : client.lastCheckInDays
                                 )}
                             </Text>
-                            <Clock size={horizontalScale(12)} color={colors.textSecondary} />
+                            <Clock size={horizontalScale(12)} color={needsReminder ? colors.error : colors.textSecondary} />
+                        </View>
+
+                        {/* New Client Badge */}
+                        {isNewClient && (
+                            <View style={[styles.newBadge, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <Sparkles size={horizontalScale(11)} color={colors.primaryDark} />
+                                <Text style={styles.newBadgeText}>{t.newClient}</Text>
+                            </View>
+                        )}
+
+                        {/* Needs Attention Badge */}
+                        {client.needsAttention && (
+                            <View style={[styles.attentionBadge, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <AlertTriangle size={horizontalScale(11)} color={colors.warning} />
+                                <Text style={styles.attentionBadgeText}>{t.attention}</Text>
+                            </View>
+                        )}
+
+                        {/* Unread Messages Badge */}
+                        {client.unreadMessages > 0 && (
+                            <View style={[styles.unreadBadge, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <MessageCircle size={horizontalScale(11)} color={colors.error} />
+                                <Text style={styles.unreadBadgeText}>{t.unreadCount(client.unreadMessages)}</Text>
+                            </View>
+                        )}
+
+                        {/* Active Status */}
+                        <View style={[styles.statusActiveBadge, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                            <View style={styles.statusDotGreen} />
+                            <Text style={styles.statusActiveText}>{t.active}</Text>
                         </View>
                     </View>
 
@@ -319,7 +438,10 @@ export default function ClientsScreen() {
                             onPress={() => navigateToProfile(client.id)}
                             activeOpacity={0.7}
                         >
-                            <Text style={styles.viewProfileText}>{t.viewProfile}</Text>
+                            <View style={[styles.viewProfileInner, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                <Eye size={horizontalScale(14)} color={colors.primaryDark} />
+                                <Text style={styles.viewProfileText}>{t.viewProfile}</Text>
+                            </View>
                         </TouchableOpacity>
 
                         {needsReminder ? (
@@ -349,7 +471,10 @@ export default function ClientsScreen() {
                                     end={{ x: 1, y: 0 }}
                                     style={styles.messageButton}
                                 >
-                                    <Text style={styles.messageButtonText}>{t.message}</Text>
+                                    <View style={[styles.messageButtonInner, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
+                                        <Mail size={horizontalScale(14)} color="#FFFFFF" />
+                                        <Text style={styles.messageButtonText}>{t.message}</Text>
+                                    </View>
                                 </LinearGradient>
                             </TouchableOpacity>
                         )}
@@ -679,7 +804,7 @@ const styles = StyleSheet.create({
     progressHeader: {
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: verticalScale(6),
+        marginBottom: verticalScale(10),
     },
     progressLabel: {
         fontSize: ScaleFontSize(11),
@@ -688,33 +813,95 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
+    progressPercentageContainer: {
+        paddingHorizontal: horizontalScale(8),
+        paddingVertical: verticalScale(2),
+        borderRadius: horizontalScale(8),
+    },
     progressPercentage: {
-        fontSize: ScaleFontSize(12),
-        fontWeight: '700',
-        color: colors.success,
-    },
-    weightFlow: {
-        marginBottom: verticalScale(8),
-    },
-    weightText: {
         fontSize: ScaleFontSize(13),
-        fontWeight: '500',
-        color: colors.textPrimary,
-        fontFamily: 'monospace',
+        fontWeight: '800',
     },
-    weightArrow: {
+    // Weight Flow
+    weightFlowContainer: {
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: verticalScale(8),
+        paddingHorizontal: horizontalScale(4),
+    },
+    weightItem: {
+        alignItems: 'center',
+        gap: verticalScale(2),
+    },
+    weightItemLabel: {
+        fontSize: ScaleFontSize(9),
+        fontWeight: '600',
         color: colors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    weightItemValue: {
+        fontSize: ScaleFontSize(15),
+        fontWeight: '700',
+        color: colors.textPrimary,
+    },
+    weightItemCurrent: {
+        fontSize: ScaleFontSize(16),
+    },
+    weightFlowArrow: {
+        paddingHorizontal: horizontalScale(2),
+    },
+    weightArrowText: {
+        fontSize: ScaleFontSize(14),
+        color: colors.textSecondary,
+        fontWeight: '300',
+    },
+    // Weight Change Badge
+    weightChangeBadge: {
+        alignItems: 'center',
+        gap: horizontalScale(4),
+        paddingHorizontal: horizontalScale(10),
+        paddingVertical: verticalScale(4),
+        borderRadius: horizontalScale(12),
+        marginBottom: verticalScale(6),
+    },
+    weightChangeText: {
+        fontSize: ScaleFontSize(11),
+        fontWeight: '700',
+    },
+    // Progress Bar + Milestones
+    progressBarWrapper: {
+        position: 'relative',
+        marginTop: verticalScale(4),
     },
     progressBarContainer: {
         height: verticalScale(8),
         backgroundColor: '#E5E7EB',
         borderRadius: horizontalScale(4),
         overflow: 'hidden',
-        marginVertical: verticalScale(10),
     },
     progressBarFill: {
         height: '100%',
         borderRadius: horizontalScale(4),
+    },
+    milestoneContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: verticalScale(8),
+    },
+    milestoneDot: {
+        position: 'absolute',
+        top: verticalScale(2),
+        width: horizontalScale(4),
+        height: horizontalScale(4),
+        borderRadius: horizontalScale(2),
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        marginLeft: -horizontalScale(2),
+    },
+    milestoneDotReached: {
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
     },
     // Card Footer
     cardFooter: {
@@ -729,7 +916,7 @@ const styles = StyleSheet.create({
     },
     infoBadges: {
         flexWrap: 'wrap',
-        gap: horizontalScale(8),
+        gap: horizontalScale(6),
     },
     infoBadge: {
         backgroundColor: colors.bgSecondary,
@@ -740,7 +927,7 @@ const styles = StyleSheet.create({
         gap: horizontalScale(4),
     },
     infoBadgeText: {
-        fontSize: ScaleFontSize(12),
+        fontSize: ScaleFontSize(11),
         color: colors.textSecondary,
         fontWeight: '500',
     },
@@ -748,6 +935,35 @@ const styles = StyleSheet.create({
         color: colors.error,
         fontWeight: '700',
     },
+    // New Client Badge
+    newBadge: {
+        backgroundColor: 'rgba(80, 115, 254, 0.1)',
+        paddingHorizontal: horizontalScale(10),
+        paddingVertical: verticalScale(4),
+        borderRadius: horizontalScale(20),
+        alignItems: 'center',
+        gap: horizontalScale(4),
+    },
+    newBadgeText: {
+        fontSize: ScaleFontSize(11),
+        color: colors.primaryDark,
+        fontWeight: '700',
+    },
+    // Attention Badge
+    attentionBadge: {
+        backgroundColor: 'rgba(226, 185, 59, 0.12)',
+        paddingHorizontal: horizontalScale(10),
+        paddingVertical: verticalScale(4),
+        borderRadius: horizontalScale(20),
+        alignItems: 'center',
+        gap: horizontalScale(4),
+    },
+    attentionBadgeText: {
+        fontSize: ScaleFontSize(11),
+        color: colors.warning,
+        fontWeight: '700',
+    },
+    // Unread Badge
     unreadBadge: {
         backgroundColor: '#FEE2E2',
         paddingHorizontal: horizontalScale(10),
@@ -757,10 +973,31 @@ const styles = StyleSheet.create({
         gap: horizontalScale(4),
     },
     unreadBadgeText: {
-        fontSize: ScaleFontSize(12),
+        fontSize: ScaleFontSize(11),
         color: colors.error,
         fontWeight: '700',
     },
+    // Status Badge
+    statusActiveBadge: {
+        backgroundColor: 'rgba(39, 174, 97, 0.1)',
+        paddingHorizontal: horizontalScale(10),
+        paddingVertical: verticalScale(4),
+        borderRadius: horizontalScale(20),
+        alignItems: 'center',
+        gap: horizontalScale(4),
+    },
+    statusDotGreen: {
+        width: horizontalScale(6),
+        height: horizontalScale(6),
+        borderRadius: horizontalScale(3),
+        backgroundColor: colors.success,
+    },
+    statusActiveText: {
+        fontSize: ScaleFontSize(11),
+        color: colors.success,
+        fontWeight: '600',
+    },
+    // Action Buttons
     actionButtons: {
         gap: horizontalScale(10),
     },
@@ -773,8 +1010,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    viewProfileInner: {
+        alignItems: 'center',
+        gap: horizontalScale(6),
+    },
     viewProfileText: {
-        fontSize: ScaleFontSize(14),
+        fontSize: ScaleFontSize(13),
         fontWeight: '600',
         color: colors.primaryDark,
     },
@@ -786,8 +1027,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    messageButtonInner: {
+        alignItems: 'center',
+        gap: horizontalScale(6),
+    },
     messageButtonText: {
-        fontSize: ScaleFontSize(14),
+        fontSize: ScaleFontSize(13),
         fontWeight: '700',
         color: '#FFFFFF',
     },
