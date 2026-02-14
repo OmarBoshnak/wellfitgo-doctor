@@ -68,6 +68,7 @@ const t = {
     target: isRTL ? 'الهدف' : 'Target',
     lost: isRTL ? 'فقد' : 'lost',
     gained: isRTL ? 'زاد' : 'gained',
+    toGo: isRTL ? 'متبقي' : 'to go',
     newClient: isRTL ? 'جديد' : 'New',
     attention: isRTL ? 'يحتاج متابعة' : 'Needs Attention',
     unreadCount: isRTL
@@ -288,13 +289,29 @@ export default function ClientsScreen() {
 
                 {/* Progress Section */}
                 {(() => {
+                    // Calculate ideal target weight based on height & age (healthy BMI)
+                    // BMI target: <30 yrs → 21.5, 30–50 yrs → 22.0, 50+ yrs → 23.0
+                    const computeIdealWeight = (heightCm?: number, age?: number): number => {
+                        if (!heightCm || heightCm <= 0) return client.targetWeight;
+                        const heightM = heightCm / 100;
+                        let targetBmi = 22.0; // default mid-healthy BMI
+                        if (age && age < 30) targetBmi = 21.5;
+                        else if (age && age >= 50) targetBmi = 23.0;
+                        return Math.round(targetBmi * heightM * heightM * 10) / 10;
+                    };
+
+                    const idealTarget = computeIdealWeight(client.height, client.age);
                     const weightChange = client.startWeight - client.currentWeight;
                     const isLosing = weightChange > 0;
+                    const totalToLose = Math.abs(client.startWeight - idealTarget);
+                    const actualProgress = totalToLose > 0
+                        ? Math.round((Math.abs(weightChange) / totalToLose) * 100)
+                        : client.progress;
+                    const clampedProgress = Math.min(100, Math.max(0, actualProgress));
                     const progressColor =
-                        client.progress >= 70 ? colors.success :
-                            client.progress >= 30 ? colors.warning : colors.error;
+                        clampedProgress >= 70 ? colors.success :
+                            clampedProgress >= 30 ? colors.warning : colors.error;
                     const changeColor = isLosing ? colors.success : colors.error;
-                    const clampedProgress = Math.min(100, Math.max(0, client.progress));
 
                     return (
                         <View style={styles.progressSection}>
@@ -302,7 +319,7 @@ export default function ClientsScreen() {
                             <View style={[styles.progressHeader, { flexDirection: isRTL ? 'row' : 'row-reverse' }]}>
                                 <View style={[styles.progressPercentageContainer, { backgroundColor: `${progressColor}15` }]}>
                                     <Text style={[styles.progressPercentage, { color: progressColor }]}>
-                                        {client.progress}%
+                                        {clampedProgress}%
                                     </Text>
                                 </View>
                                 <Text style={styles.progressLabel}>{t.weightProgress}</Text>
@@ -329,7 +346,10 @@ export default function ClientsScreen() {
                                 <View style={styles.weightItem}>
                                     <Text style={styles.weightItemLabel}>{t.target}</Text>
                                     <Text style={[styles.weightItemValue, { color: colors.primaryDark }]}>
-                                        {client.targetWeight.toFixed(1)}
+                                        {idealTarget.toFixed(1)}kg
+                                    </Text>
+                                    <Text style={styles.weightItemSubtext}>
+                                        {Math.abs(client.currentWeight - idealTarget).toFixed(1)}kg {t.toGo}
                                     </Text>
                                 </View>
                             </View>
@@ -356,7 +376,7 @@ export default function ClientsScreen() {
                             <View style={styles.progressBarWrapper}>
                                 <View style={styles.progressBarContainer}>
                                     <LinearGradient
-                                        colors={client.progress >= 70 ? gradients.success : client.progress >= 30 ? gradients.warning : gradients.error}
+                                        colors={clampedProgress >= 70 ? gradients.success : clampedProgress >= 30 ? gradients.warning : gradients.error}
                                         start={{ x: 0, y: 0 }}
                                         end={{ x: 1, y: 0 }}
                                         style={[styles.progressBarFill, { width: `${clampedProgress}%` }]}
@@ -847,6 +867,12 @@ const styles = StyleSheet.create({
     },
     weightItemCurrent: {
         fontSize: ScaleFontSize(16),
+    },
+    weightItemSubtext: {
+        fontSize: ScaleFontSize(9),
+        fontWeight: '500',
+        color: colors.textSecondary,
+        marginTop: verticalScale(1),
     },
     weightFlowArrow: {
         paddingHorizontal: horizontalScale(2),

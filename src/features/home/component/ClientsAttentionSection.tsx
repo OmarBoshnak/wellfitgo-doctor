@@ -1,8 +1,21 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useState, useCallback } from 'react';
+import {
+    View,
+    Text,
+    Image,
+    TouchableOpacity,
+    StyleSheet,
+    FlatList,
+    Dimensions,
+    Animated as RNAnimated,
+} from 'react-native';
 import { isRTL, doctorTranslations as t, translateName, attentionTranslations as at } from '@/src/i18n';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { colors } from '@/src/core/constants/Theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_PADDING = horizontalScale(12);
+const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
 
 // ============ TYPES ============
 export interface Client {
@@ -15,9 +28,12 @@ export interface Client {
     feeling?: string;
     // Attention metadata
     attentionType: 'late_message' | 'weight_gain' | 'missing_checkin';
+    attentionReason?: 'inactive' | 'weight_no_diet' | 'late_message';
     weightChange?: number;
     lastMessageTime?: number;
     daysSinceCheckin?: number | null;
+    daysSinceActive?: number;
+    pendingMessageCount?: number;
 }
 
 export interface ClientsAttentionSectionProps {
@@ -28,21 +44,36 @@ export interface ClientsAttentionSectionProps {
     onViewAll: () => void;
     onClientPress: (clientId: string) => void;
     onMessagePress: (clientId: string) => void;
+    onDismiss?: (clientId: string) => void;
     onRetry?: () => void;
 }
 
+// ============ CATEGORY CONFIG ============
+const CATEGORY_CONFIG: Record<string, { emoji: string; color: string; bgColor: string; label: string }> = {
+    inactive: {
+        emoji: '🔴',
+        color: '#B91C1C',
+        bgColor: '#FEE2E2',
+        label: isRTL ? 'غير نشط' : 'Inactive',
+    },
+    weight_no_diet: {
+        emoji: '🟠',
+        color: '#C2410C',
+        bgColor: '#FFEDD5',
+        label: isRTL ? 'بدون خطة' : 'No Diet Plan',
+    },
+    late_message: {
+        emoji: '🟡',
+        color: '#92400E',
+        bgColor: '#FEF3C7',
+        label: isRTL ? 'رسالة متأخرة' : 'Late Message',
+    },
+};
+
 // ============ HELPER FUNCTIONS ============
-function getStatusColor(statusType: string) {
-    switch (statusType) {
-        case 'critical':
-            return { bg: '#FEE2E2', text: '#B91C1C', border: '#EF4444' };
-        case 'warning':
-            return { bg: '#FFEDD5', text: '#C2410C', border: '#F97316' };
-        case 'info':
-            return { bg: '#DBEAFE', text: '#1D4ED8', border: '#3B82F6' };
-        default:
-            return { bg: '#F3F4F6', text: '#374151', border: '#9CA3AF' };
-    }
+function getCategoryConfig(client: Client) {
+    const reason = client.attentionReason || 'inactive';
+    return CATEGORY_CONFIG[reason] || CATEGORY_CONFIG.inactive;
 }
 
 function formatDateOnly(value?: string) {
@@ -59,7 +90,7 @@ function formatDateOnly(value?: string) {
 // ============ SUB-COMPONENTS ============
 
 /**
- * Skeleton loader for client cards
+ * Skeleton loader for the attention section
  */
 function SkeletonLoader() {
     return (
@@ -68,16 +99,13 @@ function SkeletonLoader() {
                 <View style={styles.skeletonTitle} />
                 <View style={styles.skeletonViewAll} />
             </View>
-            {[1, 2, 3].map((i) => (
-                <View key={i} style={styles.skeletonRow}>
-                    <View style={styles.skeletonAvatar} />
-                    <View style={styles.skeletonContent}>
-                        <View style={styles.skeletonName} />
-                        <View style={styles.skeletonStatus} />
-                    </View>
-                    <View style={styles.skeletonButton} />
+            <View style={styles.skeletonCardBody}>
+                <View style={styles.skeletonAvatar} />
+                <View style={styles.skeletonContent}>
+                    <View style={styles.skeletonName} />
+                    <View style={styles.skeletonStatus} />
                 </View>
-            ))}
+            </View>
         </View>
     );
 }
@@ -112,6 +140,123 @@ function ErrorState({ onRetry }: { onRetry?: () => void }) {
     );
 }
 
+/**
+ * Pagination dots
+ */
+function PaginationDots({ total, activeIndex }: { total: number; activeIndex: number }) {
+    if (total <= 1) return null;
+    return (
+        <View style={styles.dotsContainer}>
+            {Array.from({ length: total }).map((_, i) => (
+                <View
+                    key={i}
+                    style={[
+                        styles.dot,
+                        i === activeIndex ? styles.dotActive : styles.dotInactive,
+                    ]}
+                />
+            ))}
+        </View>
+    );
+}
+
+/**
+ * Single attention card rendered inside the FlatList
+ */
+function AttentionCard({
+    client,
+    onPress,
+    onMessage,
+    onDone,
+}: {
+    client: Client;
+    onPress: () => void;
+    onMessage: () => void;
+    onDone: () => void;
+}) {
+    const config = getCategoryConfig(client);
+    const lastActiveDate = formatDateOnly(client.lastActive);
+    const fadeAnim = useRef(new RNAnimated.Value(1)).current;
+
+    const handleDone = () => {
+        RNAnimated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+        }).start(() => {
+            onDone();
+        });
+    };
+
+    return (
+        <RNAnimated.View style={[styles.cardWrapper, { width: CARD_WIDTH, opacity: fadeAnim }]}>
+            <TouchableOpacity
+                style={styles.attentionCard}
+                onPress={onPress}
+                activeOpacity={0.85}
+            >
+                {/* Category badge */}
+                <View style={[styles.categoryBadge, { backgroundColor: config.bgColor }, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <Text style={styles.categoryEmoji}>{config.emoji}</Text>
+                    <Text style={[styles.categoryLabel, { color: config.color }]}>{config.label}</Text>
+                </View>
+
+                {/* Client info row */}
+                <View style={[styles.clientInfoRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    {client.avatar ? (
+                        <Image
+                            source={{ uri: client.avatar }}
+                            style={styles.clientAvatar}
+                        />
+                    ) : (
+                        <View style={[styles.clientAvatar, styles.avatarFallback]}>
+                            <Text style={styles.avatarFallbackText}>
+                                {client.name?.charAt(0)?.toUpperCase() || '?'}
+                            </Text>
+                        </View>
+                    )}
+
+                    <View style={[styles.clientDetails, isRTL ? { marginRight: horizontalScale(12) } : { marginLeft: horizontalScale(12) }]}>
+                        <Text style={[styles.clientName, { textAlign: isRTL ? 'right' : 'left' }]}>
+                            {translateName(client.name)}
+                        </Text>
+                        {lastActiveDate ? (
+                            <Text style={[styles.lastActiveText, { textAlign: isRTL ? 'right' : 'left' }]}>
+                                {t.lastActive} {lastActiveDate}
+                            </Text>
+                        ) : null}
+                    </View>
+                </View>
+
+                {/* Action buttons */}
+                <View style={[styles.actionRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                    <TouchableOpacity
+                        style={styles.doneButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            handleDone();
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.doneButtonText}>{at.markDone}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.messageButton}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onMessage();
+                        }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.messageButtonText}>{t.message}</Text>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        </RNAnimated.View>
+    );
+}
+
 // ============ MAIN COMPONENT ============
 export function ClientsAttentionSection({
     clients,
@@ -121,9 +266,34 @@ export function ClientsAttentionSection({
     onViewAll,
     onClientPress,
     onMessagePress,
+    onDismiss,
     onRetry
 }: ClientsAttentionSectionProps) {
-    const [expandedStatusId, setExpandedStatusId] = React.useState<string | null>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+    const flatListRef = useRef<FlatList>(null);
+
+    // Filter out dismissed clients
+    const visibleClients = clients.filter(c => !dismissedIds.has(c.id));
+
+    const handleDismiss = useCallback((clientId: string) => {
+        setDismissedIds(prev => {
+            const next = new Set(prev);
+            next.add(clientId);
+            return next;
+        });
+        onDismiss?.(clientId);
+    }, [onDismiss]);
+
+    const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+        if (viewableItems.length > 0) {
+            setActiveIndex(viewableItems[0].index ?? 0);
+        }
+    }).current;
+
+    const viewabilityConfig = useRef({
+        viewAreaCoveragePercentThreshold: 50,
+    }).current;
 
     // Loading state
     if (isLoading) {
@@ -136,12 +306,13 @@ export function ClientsAttentionSection({
     }
 
     // Empty state
-    if (isEmpty || clients.length === 0) {
+    if (isEmpty || visibleClients.length === 0) {
         return <EmptyState />;
     }
 
     return (
         <View style={styles.sectionCard}>
+            {/* Header */}
             <View style={[styles.sectionHeader, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
                 <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>{t.needsAttention}</Text>
                 <TouchableOpacity onPress={onViewAll}>
@@ -149,83 +320,32 @@ export function ClientsAttentionSection({
                 </TouchableOpacity>
             </View>
 
-            {clients.map((client) => {
-                const statusColors = getStatusColor(client.statusType);
-                const lastActiveDate = formatDateOnly(client.lastActive);
-                const statusLabel =  lastActiveDate
-                    ? `${t.lastActive} ${lastActiveDate}`
-                    : client.status;
-                return (
-                    <TouchableOpacity
-                        key={client.id}
-                        style={[
-                            styles.clientRow,
-                            { flexDirection: isRTL ? 'row-reverse' : 'row' },
-                            { borderLeftColor: statusColors.border, borderLeftWidth: isRTL ? 0 : 3 },
-                            { borderRightColor: statusColors.border, borderRightWidth: isRTL ? 3 : 0 },
-                        ]}
-                        onPress={() => onClientPress(client.id)}
-                        activeOpacity={0.7}
-                    >
-                        {client.avatar ? (
-                            <Image
-                                source={{ uri: client.avatar }}
-                                style={[
-                                    styles.clientAvatar,
-                                    isRTL ? { marginLeft: horizontalScale(12) } : { marginRight: horizontalScale(12) }
-                                ]}
-                            />
-                        ) : (
-                            <View
-                                style={[
-                                    styles.clientAvatar,
-                                    styles.avatarFallback,
-                                    isRTL ? { marginLeft: horizontalScale(12) } : { marginRight: horizontalScale(12) }
-                                ]}
-                            >
-                                <Text style={styles.avatarFallbackText}>
-                                    {client.name?.charAt(0)?.toUpperCase() || '?'}
-                                </Text>
-                            </View>
-                        )}
+            {/* Swipeable FlatList */}
+            <FlatList
+                ref={flatListRef}
+                data={visibleClients}
+                keyExtractor={(item) => item.id}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={CARD_WIDTH}
+                decelerationRate="fast"
+                contentContainerStyle={styles.flatListContent}
+                onViewableItemsChanged={onViewableItemsChanged}
+                viewabilityConfig={viewabilityConfig}
+                renderItem={({ item }) => (
+                    <AttentionCard
+                        client={item}
+                        onPress={() => onClientPress(item.id)}
+                        onMessage={() => onMessagePress(item.id)}
+                        onDone={() => handleDismiss(item.id)}
+                    />
+                )}
+            />
 
-                        <View style={styles.clientInfo}>
-                            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-                                <Text style={[styles.clientName, { textAlign: isRTL ? 'right' : 'left' }]}>
-                                    {translateName(client.name)}
-                                </Text>
-                            </View>
-                            <View style={[styles.statusRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                                <TouchableOpacity
-                                    style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
-                                    activeOpacity={0.7}
-                                    onPress={(e) => {
-                                        e.stopPropagation();
-                                        setExpandedStatusId((prev) => (prev === client.id ? null : client.id));
-                                    }}
-                                >
-                                    <Text style={[styles.statusText, { color: statusColors.text }]}>
-                                        {statusLabel}
-                                    </Text>
-                                </TouchableOpacity>
-                                {client.feeling && (
-                                    <Text style={styles.feelingEmoji}>{client.feeling}</Text>
-                                )}
-                            </View>
-                        </View>
+            {/* Pagination dots */}
+            <PaginationDots total={visibleClients.length} activeIndex={activeIndex} />
 
-                        <TouchableOpacity
-                            style={styles.messageButton}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                onMessagePress(client.id);
-                            }}
-                        >
-                            <Text style={styles.messageButtonText}>{t.message}</Text>
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                );
-            })}
         </View>
     );
 }
@@ -246,7 +366,7 @@ const styles = StyleSheet.create({
     sectionHeader: {
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: verticalScale(16),
+        marginBottom: verticalScale(12),
     },
     sectionTitle: {
         fontSize: ScaleFontSize(16),
@@ -258,17 +378,47 @@ const styles = StyleSheet.create({
         color: colors.success,
         fontWeight: '500',
     },
-    clientRow: {
-        alignItems: 'center',
-        padding: horizontalScale(12),
-        borderRadius: horizontalScale(12),
+    // FlatList
+    flatListContent: {
+        paddingHorizontal: 0,
+    },
+    cardWrapper: {
+        paddingHorizontal: horizontalScale(2),
+    },
+    // Attention card
+    attentionCard: {
         backgroundColor: colors.bgSecondary,
-        marginBottom: verticalScale(8),
+        borderRadius: horizontalScale(14),
+        padding: horizontalScale(16),
+        width: '90%',
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    categoryBadge: {
+        alignSelf: 'flex-start',
+        alignItems: 'center',
+        paddingHorizontal: horizontalScale(10),
+        paddingVertical: verticalScale(4),
+        borderRadius: horizontalScale(20),
+        marginBottom: verticalScale(12),
+        gap: horizontalScale(6),
+    },
+    categoryEmoji: {
+        fontSize: ScaleFontSize(12),
+    },
+    categoryLabel: {
+        fontSize: ScaleFontSize(12),
+        fontWeight: '600',
+    },
+    // Client info
+    clientInfoRow: {
+        alignItems: 'center',
+        marginBottom: verticalScale(14),
     },
     clientAvatar: {
-        width: horizontalScale(44),
-        height: horizontalScale(44),
-        borderRadius: horizontalScale(22),
+        width: horizontalScale(48),
+        height: horizontalScale(48),
+        borderRadius: horizontalScale(24),
     },
     avatarFallback: {
         backgroundColor: colors.primaryDark,
@@ -276,54 +426,88 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     avatarFallbackText: {
-        fontSize: ScaleFontSize(16),
+        fontSize: ScaleFontSize(18),
         fontWeight: '700',
         color: '#FFFFFF',
     },
-    clientInfo: {
+    clientDetails: {
         flex: 1,
     },
     clientName: {
-        fontSize: ScaleFontSize(14),
+        fontSize: ScaleFontSize(15),
         fontWeight: '600',
         color: colors.textPrimary,
-        marginHorizontal: horizontalScale(10),
-        marginBottom: verticalScale(4)
+        marginBottom: verticalScale(3),
     },
-    statusRow: {
-        alignItems: 'center',
-        gap: horizontalScale(8),
-        flexWrap: 'wrap',
-        marginHorizontal: horizontalScale(10),
-        marginVertical: verticalScale(4)
-    },
-    statusBadge: {
-        paddingHorizontal: horizontalScale(5),
-        paddingVertical: verticalScale(3),
-        borderRadius: horizontalScale(4),
-    },
-    statusText: {
-        fontSize: ScaleFontSize(11),
+    statusDescription: {
+        fontSize: ScaleFontSize(13),
         fontWeight: '500',
-    },
-    feelingEmoji: {
-        fontSize: ScaleFontSize(14),
+        marginBottom: verticalScale(2),
     },
     lastActiveText: {
         fontSize: ScaleFontSize(11),
         color: colors.textSecondary,
-        marginTop: verticalScale(4),
+        marginTop: verticalScale(2),
+    },
+    // Action buttons
+    actionRow: {
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: horizontalScale(10),
+    },
+    doneButton: {
+        flex: 1,
+        paddingVertical: verticalScale(10),
+        borderRadius: horizontalScale(10),
+        backgroundColor: '#DCFCE7',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    doneButtonText: {
+        fontSize: ScaleFontSize(14),
+        fontWeight: '600',
+        color: '#166534',
     },
     messageButton: {
-        paddingHorizontal: horizontalScale(12),
-        paddingVertical: verticalScale(6),
+        flex: 1,
+        paddingVertical: verticalScale(10),
+        borderRadius: horizontalScale(10),
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: horizontalScale(8),
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.bgPrimary,
     },
     messageButtonText: {
-        fontSize: ScaleFontSize(12),
+        fontSize: ScaleFontSize(14),
+        fontWeight: '500',
         color: colors.textPrimary,
+    },
+    // Pagination dots
+    dotsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: verticalScale(12),
+        gap: horizontalScale(6),
+    },
+    dot: {
+        width: horizontalScale(8),
+        height: horizontalScale(8),
+        borderRadius: horizontalScale(4),
+    },
+    dotActive: {
+        backgroundColor: colors.success,
+        width: horizontalScale(20),
+    },
+    dotInactive: {
+        backgroundColor: '#D1D5DB',
+    },
+    swipeHint: {
+        textAlign: 'center',
+        fontSize: ScaleFontSize(11),
+        color: colors.textSecondary,
+        marginTop: verticalScale(6),
     },
     // Skeleton styles
     skeletonTitle: {
@@ -338,18 +522,17 @@ const styles = StyleSheet.create({
         backgroundColor: '#E5E7EB',
         borderRadius: horizontalScale(4),
     },
-    skeletonRow: {
-        flexDirection: isRTL ? 'row' : 'row-reverse',
+    skeletonCardBody: {
+        flexDirection: isRTL ? 'row-reverse' : 'row',
         alignItems: 'center',
-        padding: horizontalScale(12),
+        padding: horizontalScale(16),
         borderRadius: horizontalScale(12),
         backgroundColor: colors.bgSecondary,
-        marginBottom: verticalScale(8),
     },
     skeletonAvatar: {
-        width: horizontalScale(44),
-        height: horizontalScale(44),
-        borderRadius: horizontalScale(22),
+        width: horizontalScale(48),
+        height: horizontalScale(48),
+        borderRadius: horizontalScale(24),
         backgroundColor: '#E5E7EB',
         marginHorizontal: horizontalScale(12),
     },
@@ -370,12 +553,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#E5E7EB',
         borderRadius: horizontalScale(4),
         alignSelf: isRTL ? 'flex-start' : 'flex-end',
-    },
-    skeletonButton: {
-        width: horizontalScale(60),
-        height: verticalScale(28),
-        backgroundColor: '#E5E7EB',
-        borderRadius: horizontalScale(8),
     },
     // Empty state styles
     emptyCard: {

@@ -19,6 +19,7 @@ export interface Client {
     email: string;
     phone?: string;
     avatar: string | null;
+    age?: number;
     height?: number;
 
     // Weight data

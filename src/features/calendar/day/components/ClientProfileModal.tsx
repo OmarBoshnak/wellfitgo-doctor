@@ -29,6 +29,7 @@ export interface ClientProfile {
     lastName?: string;
     avatarUrl?: string;
     height?: number;
+    age?: number;
     currentWeight: number;
     targetWeight: number;
     subscriptionStatus: 'active' | 'paused' | 'cancelled' | 'trial' | 'none';
@@ -110,6 +111,21 @@ function getInitials(firstName: string, lastName?: string): string {
     return `${first}${last}`;
 }
 
+function calculateHealthyTargetWeight(heightCm?: number, age?: number): number | null {
+    if (!heightCm || heightCm <= 0) return null;
+
+    const heightM = heightCm / 100;
+    let bmiTarget = 21.7;
+
+    if (typeof age === 'number' && Number.isFinite(age)) {
+        if (age < 18) return null;
+        if (age < 25) bmiTarget = 20.8;
+        if (age >= 65) bmiTarget = 23;
+    }
+
+    return Math.round(bmiTarget * heightM * heightM * 10) / 10;
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -127,6 +143,13 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
     const hasAlertsData = typeof client.activityLevel === 'string' && client.activityLevel.trim().length > 0;
     const subscriptionLabel = getSubscriptionLabel(client.subscriptionStatus);
     const initials = getInitials(client.firstName, client.lastName);
+    const healthyTargetWeight = calculateHealthyTargetWeight(client.height, client.age);
+    const targetWeightValue = Number.isFinite(healthyTargetWeight)
+        ? healthyTargetWeight
+        : Number.isFinite(client.targetWeight)
+          ? client.targetWeight
+          : null;
+    const targetWeightDisplay = targetWeightValue == null ? '—' : String(targetWeightValue);
 
     return (
         <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -186,7 +209,7 @@ export const ClientProfileModal: React.FC<ClientProfileModalProps> = ({
                         <View style={styles.vitalItem}>
                             <Text style={styles.vitalLabel}>{t.target}</Text>
                             <Text style={[styles.vitalValue, styles.vitalValueTarget]}>
-                                {client.targetWeight} {t.kg}
+                                {targetWeightDisplay} {targetWeightValue == null ? '' : t.kg}
                             </Text>
                         </View>
                     </View>

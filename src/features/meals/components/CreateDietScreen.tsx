@@ -725,26 +725,35 @@ export default function CreateDietScreen({categoryId, categoryType, onBack, onSa
             console.log('Category ID:', categoryId);
             console.log('Category Type:', categoryType);
 
-            // For custom categories, extract the actual Convex ID
-            // categoryId format for custom: "custom_kx79e9n0hg9d85j99dna2m0dxs7ydwas"
-            const isCustomCategory = categoryId.startsWith('custom_');
-            const convexCategoryId = isCustomCategory ? categoryId.replace('custom_', '') : undefined;
+            // Determine if it's a custom category:
+            // - categoryId starts with "custom_" OR
+            // - categoryType looks like a MongoDB ObjectId (24 hex chars)
+            const isCustomCategory = categoryId.startsWith('custom_') || /^[0-9a-fA-F]{24}$/.test(categoryId);
+            const resolvedCategoryId = categoryId.startsWith('custom_')
+                ? categoryId.replace('custom_', '')
+                : categoryId;
 
-            // Always use 'custom' as type for custom categories
-            const dietType = isCustomCategory ? 'custom' : categoryType;
+            // Valid DietPlan types from the schema enum
+            const validTypes = ['keto', 'weekly', 'classic', 'low_carb', 'high_protein',
+                'intermittent_fasting', 'vegetarian', 'maintenance',
+                'muscle_gain', 'medical', 'custom', 'ramadan'];
+
+            // Use 'custom' if the categoryType isn't a valid enum value
+            const dietType = validTypes.includes(categoryType) ? categoryType : 'custom';
 
             console.log('Is Custom Category:', isCustomCategory);
-            console.log('Convex Category ID:', convexCategoryId);
+            console.log('Resolved Category ID:', resolvedCategoryId);
             console.log('Diet Type:', dietType);
 
             await createDietPlan({
                 name: name.trim(),
                 description: description.trim() || undefined,
                 type: dietType as DietPlanType,
-                categoryId: convexCategoryId, // Pass the actual ID for custom categories
+                format: 'general' as any, // Required by DietPlan schema
+                categoryId: isCustomCategory ? resolvedCategoryId : undefined,
                 targetCalories: targetCalories ? parseInt(targetCalories, 10) : undefined,
                 meals: localMeals,
-            });
+            } as any);
 
             console.log('=== CREATE SUCCESSFUL ===');
             Alert.alert(

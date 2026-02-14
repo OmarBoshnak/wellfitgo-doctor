@@ -24,6 +24,7 @@ interface BackendClient {
     email: string;
     avatarUrl?: string;
     phone?: string;
+    age?: number;
     height?: number;
     status: string;
     weeklyCheckinDay: string;
@@ -71,6 +72,7 @@ const transformClient = (backendClient: BackendClient): Client => ({
     email: backendClient.email,
     phone: backendClient.phone,
     avatar: backendClient.avatarUrl || null,
+    age: backendClient.age,
     height: backendClient.height,
     startWeight: backendClient.startWeight,
     currentWeight: backendClient.currentWeight,

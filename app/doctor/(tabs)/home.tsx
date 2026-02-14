@@ -305,6 +305,9 @@ export default function DoctorDashboard() {
                     onViewAll={handleViewAllAttention}
                     onClientPress={handleClientPress}
                     onMessagePress={handleMessagePress}
+                    onDismiss={(clientId) => {
+                        console.log('[Home] Dismissed attention for client:', clientId);
+                    }}
                     onRetry={refetchAttention}
                 />
 

@@ -270,6 +270,13 @@ export const attentionTranslations = {
     errorLoadingClients: isRTL ? 'فشل في تحميل العملاء' : 'Failed to load clients',
     tapToRetry: isRTL ? 'اضغط لإعادة المحاولة' : 'Tap to retry',
 
+    // Attention categories
+    inactiveDays: isRTL ? 'غير نشط منذ {x} يوم' : 'Inactive for {x} days',
+    weightNoDiet: isRTL ? 'سجل وزن جديد بدون خطة غذائية' : 'Logged weight without diet plan',
+    lateMessage: isRTL ? 'رسالة متأخرة بدون رد' : 'Late message awaiting reply',
+    markDone: isRTL ? 'تم ✓' : 'Done ✓',
+    swipeHint: isRTL ? 'اسحب للتنقل' : 'Swipe to navigate',
+
     // Time ago
     justNow: isRTL ? 'الآن' : 'just now',
     minutesAgo: isRTL ? 'منذ {x} د' : '{x}m ago',

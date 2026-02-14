@@ -122,8 +122,10 @@ export function usePlanMutations() {
             const result = await fn();
             return result;
         } catch (err) {
-            setError(err as Error);
-            throw err;
+            const responseMessage = (err as any)?.response?.data?.message;
+            const normalizedError = responseMessage ? new Error(responseMessage) : (err as Error);
+            setError(normalizedError);
+            throw normalizedError;
         } finally {
             setIsLoading(false);
         }

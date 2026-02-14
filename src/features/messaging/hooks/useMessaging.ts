@@ -18,7 +18,7 @@ const formatTimestamp = (dateString: string): string => {
 
 const transformMessage = (backendMessage: Message, currentUserId?: string): ChatMessage => {
     const isMe = backendMessage.senderId === currentUserId || backendMessage.senderRole === 'doctor';
-    
+
     // Create replyTo object for legacy compatibility
     const replyTo = backendMessage.replyToId && backendMessage.replyToContent ? {
         id: backendMessage.replyToId,
@@ -28,18 +28,18 @@ const transformMessage = (backendMessage: Message, currentUserId?: string): Chat
 
     return {
         id: backendMessage._id,
-        type: backendMessage.messageType === 'voice' ? 'audio' : 
-              backendMessage.messageType === 'text' ? 'text' : 
-              backendMessage.messageType as any,
+        type: backendMessage.messageType === 'voice' ? 'audio' :
+            backendMessage.messageType === 'text' ? 'text' :
+                backendMessage.messageType as any,
         sender: isMe ? 'me' : 'client',
         senderId: backendMessage.senderId,
         content: backendMessage.content,
         createdAt: backendMessage.createdAt,
         timestamp: formatTimestamp(backendMessage.createdAt),
-        status: backendMessage.isDeleted ? 'deleted' : 
-                backendMessage.isEdited ? 'edited' :
+        status: backendMessage.isDeleted ? 'deleted' :
+            backendMessage.isEdited ? 'edited' :
                 (backendMessage as any).isReadByClient ? 'read' :
-                'sent',
+                    'sent',
         isEdited: backendMessage.isEdited,
         isDeleted: backendMessage.isDeleted,
         audioUri: backendMessage.mediaUrl,
@@ -152,9 +152,9 @@ export function useMessages(conversationId?: string, currentUserId?: string) {
 
         return () => {
             SocketService.leaveConversation(conversationId);
-            SocketService.offNewMessage();
-            SocketService.offMessageEdited();
-            SocketService.offMessageDeleted();
+            SocketService.offNewMessage(handleNewMessage);
+            SocketService.offMessageEdited(handleMessageEdited);
+            SocketService.offMessageDeleted(handleMessageDeleted);
         };
     }, [conversationId, currentUserId]);
 
@@ -437,41 +437,134 @@ export function useCoachInbox(filter: InboxFilter = 'all') {
         // Listen for new messages to update conversation list
         const handleNewMessage = (message: any) => {
             setConversations((prev) => {
-                const updated = prev.map((conv) => {
-                    if (conv.id === message.conversationId) {
-                        return {
-                            ...conv,
-                            lastMessage: message.content,
-                            lastMessageAt: new Date(message.createdAt).getTime(),
-                            unreadCount: message.senderRole === 'client'
-                                ? (conv.unreadCount || 0) + 1
-                                : conv.unreadCount,
-                        };
-                    }
-                    return conv;
-                });
-                // Sort by lastMessageAt
-                return updated.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+                const existingIndex = prev.findIndex((conv) => conv.id === message.conversationId);
+
+                if (existingIndex !== -1) {
+                    // Update existing conversation
+                    const updated = prev.map((conv) => {
+                        if (conv.id === message.conversationId) {
+                            return {
+                                ...conv,
+                                lastMessage: message.content,
+                                lastMessageAt: new Date(message.createdAt).getTime(),
+                                unreadCount: message.senderRole === 'client'
+                                    ? (conv.unreadCount || 0) + 1
+                                    : conv.unreadCount,
+                            };
+                        }
+                        return conv;
+                    });
+                    // Sort by lastMessageAt
+                    return updated.sort((a, b) => (b.lastMessageAt || 0) - (a.lastMessageAt || 0));
+                } else {
+                    // New conversation not in list — add a placeholder and re-fetch
+                    const newConv: ChatConversation = {
+                        id: message.conversationId,
+                        clientId: message.senderId,
+                        name: message.senderName || 'عميل',
+                        avatar: message.senderAvatar || '',
+                        isOnline: true,
+                        lastMessage: message.content,
+                        lastMessageAt: new Date(message.createdAt).getTime(),
+                        unreadCount: message.senderRole === 'client' ? 1 : 0,
+                        priority: 'high',
+                    };
+                    // Re-fetch in background for full data
+                    messagingService.getConversations(filter === 'unread' ? 'unread' : 'all')
+                        .then((data) => {
+                            const refreshed: ChatConversation[] = data.map((conv) => ({
+                                id: conv.id,
+                                clientId: conv.clientId,
+                                name: conv.name,
+                                avatar: conv.avatar || '',
+                                isOnline: conv.isOnline,
+                                lastMessage: conv.lastMessage,
+                                lastMessageAt: conv.lastMessageAt,
+                                unreadCount: conv.unreadCount,
+                                priority: conv.unreadCount > 0 ? 'high' : 'normal',
+                            }));
+                            setConversations(refreshed);
+                            const totalUnread = data.reduce((acc, curr) => acc + curr.unreadCount, 0);
+                            setStats((prev) => ({ ...prev, totalUnread }));
+                        })
+                        .catch((err) => console.error('Error re-fetching conversations:', err));
+                    return [newConv, ...prev];
+                }
             });
 
-            // Update stats
-            setStats((prev) => ({
-                ...prev,
-                totalUnread: prev.totalUnread + 1,
-            }));
+            // Update stats for client messages
+            if (message.senderRole === 'client') {
+                setStats((prev) => ({
+                    ...prev,
+                    totalUnread: prev.totalUnread + 1,
+                }));
+            }
         };
 
         SocketService.onNewMessage(handleNewMessage);
 
+        // Listen for messages_read to reset unread count
+        const handleMessagesRead = (data: any) => {
+            const readConversationId = data.conversationId;
+            if (!readConversationId) return;
+
+            setConversations((prev) =>
+                prev.map((conv) =>
+                    conv.id === readConversationId
+                        ? { ...conv, unreadCount: 0, priority: 'normal' }
+                        : conv
+                )
+            );
+
+            // Recalculate total unread
+            setStats((prev) => {
+                const oldConvUnread = prev.totalUnread;
+                // We need the actual unread count of the read conversation to subtract
+                // Use a conservative approach: recalc from conversations
+                return prev;
+            });
+
+            // Recalculate stats from conversations after update
+            setConversations((prev) => {
+                const totalUnread = prev.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0);
+                setStats((s) => ({ ...s, totalUnread }));
+                return prev; // no mutation, just recalculating stats
+            });
+        };
+
+        SocketService.onMessagesRead(handleMessagesRead);
+
         return () => {
-            SocketService.offNewMessage();
+            SocketService.offNewMessage(handleNewMessage);
+            SocketService.offMessagesRead(handleMessagesRead);
         };
     }, [filter]);
+
+    // Locally mark a conversation as read (called from messages.tsx when opening a chat)
+    const markConversationAsRead = useCallback((conversationId: string) => {
+        setConversations((prev) =>
+            prev.map((conv) => {
+                if (conv.id === conversationId) {
+                    // Subtract this conversation's unread from total
+                    const unreadToRemove = conv.unreadCount || 0;
+                    if (unreadToRemove > 0) {
+                        setStats((s) => ({
+                            ...s,
+                            totalUnread: Math.max(0, s.totalUnread - unreadToRemove),
+                        }));
+                    }
+                    return { ...conv, unreadCount: 0, priority: 'normal' as const };
+                }
+                return conv;
+            })
+        );
+    }, []);
 
     return {
         conversations,
         isLoading,
         stats,
         totalUnread: stats.totalUnread,
+        markConversationAsRead,
     };
 }

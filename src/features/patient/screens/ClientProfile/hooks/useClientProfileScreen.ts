@@ -25,6 +25,7 @@ export interface ClientProfile {
     avatar?: string | null;
     location?: string;
     height?: number;
+    age?: number;
     startWeight: number;
     currentWeight: number;
     targetWeight: number;
@@ -73,6 +74,7 @@ interface ClientProgressData {
     currentWeight?: number;
     targetWeight?: number;
     height?: number;
+    age?: number;
     weightHistory?: RawWeightEntry[];
     weeklyGoals?: Record<string, any>;
     mealCompliance?: number;
@@ -145,7 +147,12 @@ const alertMessages = {
 };
 
 const DEFAULT_MEALS_TOTAL = 21;
-const IDEAL_BMI = 22;
+// Age-adjusted healthy BMI targets
+const getTargetBmi = (age?: number): number => {
+    if (age && age < 30) return 21.5;
+    if (age && age >= 50) return 23.0;
+    return 22.0; // default mid-healthy BMI (30-49)
+};
 
 const activityColors: Record<string, string> = {
     weight: '#60A5FA',
@@ -224,10 +231,11 @@ const filterHistoryByPeriod = (
     return sortedAsc.filter(entry => new Date(entry.date) >= cutoff);
 };
 
-const calculateTargetWeight = (heightCm?: number): number | null => {
+const calculateTargetWeight = (heightCm?: number, age?: number): number | null => {
     if (!heightCm || heightCm <= 0) return null;
     const heightMeters = heightCm / 100;
-    const target = IDEAL_BMI * (heightMeters ** 2);
+    const targetBmi = getTargetBmi(age);
+    const target = targetBmi * (heightMeters ** 2);
     return Math.round(target * 10) / 10;
 };
 
@@ -328,7 +336,8 @@ export function useClientProfileScreen(clientId?: string): UseClientProfileResul
     );
 
     const heightCm = progressData?.height ?? profileData?.height;
-    const calculatedTargetWeight = calculateTargetWeight(heightCm);
+    const clientAge = (progressData as any)?.age ?? (profileData as any)?.age;
+    const calculatedTargetWeight = calculateTargetWeight(heightCm, clientAge);
     const baseTargetWeight = progressData?.targetWeight ?? profileData?.targetWeight ?? 0;
     const targetWeight = calculatedTargetWeight ?? baseTargetWeight;
 
@@ -365,6 +374,7 @@ export function useClientProfileScreen(clientId?: string): UseClientProfileResul
             avatar: profileData?.avatar ?? null,
             location: profileData?.location,
             height: heightCm,
+            age: clientAge,
             startWeight,
             currentWeight,
             targetWeight,

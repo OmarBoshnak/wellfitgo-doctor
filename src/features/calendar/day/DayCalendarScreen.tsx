@@ -94,20 +94,21 @@ export const DayCalendarScreen: React.FC = () => {
         return `${year}-${month}-${day}`;
     }, [currentDate]);
 
+    const fetchEvents = useCallback(async () => {
+        try {
+            const { appointmentService } = await import('@/src/shared/services/appointment.service');
+            const data = await appointmentService.getAppointments(isoDate, isoDate);
+            setConvexEvents(data);
+        } catch (error) {
+            console.error('[DayCalendarScreen] Error fetching events:', error);
+            setConvexEvents([]);
+        }
+    }, [isoDate]);
+
     // Fetch events from backend
     useEffect(() => {
-        const fetchEvents = async () => {
-            try {
-                const { appointmentService } = await import('@/src/shared/services/appointment.service');
-                const data = await appointmentService.getAppointments(isoDate, isoDate);
-                setConvexEvents(data);
-            } catch (error) {
-                console.error('[DayCalendarScreen] Error fetching events:', error);
-                setConvexEvents([]);
-            }
-        };
         fetchEvents();
-    }, [isoDate]);
+    }, [fetchEvents]);
 
     // Fetch selected client profile for modal
     useEffect(() => {
@@ -140,6 +141,7 @@ export const DayCalendarScreen: React.FC = () => {
                     firstName: client.firstName,
                     lastName: client.lastName,
                     avatarUrl: client.avatar || undefined,
+                    age: client.age,
                     height: progress.height ?? client.height,
                     currentWeight: progress.currentWeight ?? client.currentWeight,
                     targetWeight: progress.targetWeight ?? client.targetWeight,
@@ -225,9 +227,9 @@ export const DayCalendarScreen: React.FC = () => {
 
     // Handle event updated/deleted
     const handleEventUpdated = useCallback(() => {
-        // Convex will auto-refresh the query
         setOptimisticEvents([]);
-    }, []);
+        fetchEvents();
+    }, [fetchEvents]);
 
     // Handle avatar press - show profile modal
     const handleAvatarPress = useCallback((clientId?: string) => {

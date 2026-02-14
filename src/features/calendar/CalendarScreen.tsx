@@ -204,10 +204,10 @@ export const CalendarScreen: React.FC = () => {
 
     // Handle event updated/deleted
     const handleEventUpdated = useCallback(() => {
-        // Convex will auto-refresh the query
         setOptimisticEvents([]);
         setShowEditModal(false);
-    }, []);
+        fetchEvents();
+    }, [fetchEvents]);
 
     // For day view, show only selected day
     const displayDays = currentView === 'day'

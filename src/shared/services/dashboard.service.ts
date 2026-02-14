@@ -47,6 +47,10 @@ export interface ClientAttentionBackend {
     lastActivity: string;
     priority: number;
     unreadMessages?: number;
+    attentionReason?: 'inactive' | 'weight_no_diet' | 'late_message';
+    daysSinceActive?: number;
+    lastWeightDate?: string;
+    pendingMessageCount?: number;
 }
 
 // Types for appointments (matches backend response)

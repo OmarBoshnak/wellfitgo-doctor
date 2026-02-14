@@ -71,7 +71,7 @@ export default function MessagesScreen() {
     const [isSearchActive, setIsSearchActive] = useState(false);
 
     // Use hook for real-time inbox
-    const { conversations, isLoading } = useCoachInbox(filterToInbox[activeFilter]);
+    const { conversations, isLoading, markConversationAsRead } = useCoachInbox(filterToInbox[activeFilter]);
 
     // Transform Convex conversations to Message format for UI
     const messages: Message[] = useMemo(() => {
@@ -125,6 +125,12 @@ export default function MessagesScreen() {
 
     const handleMessagePress = useCallback((message: Message) => {
         console.log('Open chat:', message.id, message.name);
+
+        // Mark as read locally immediately
+        if (message.conversationId) {
+            markConversationAsRead(message.conversationId);
+        }
+
         setSelectedConversation({
             id: message.id,
             conversationId: message.conversationId,
@@ -132,12 +138,12 @@ export default function MessagesScreen() {
             name: message.name,
             avatar: message.avatar || '',
             isOnline: message.isOnline,
-            unreadCount: message.unreadCount,
+            unreadCount: 0, // Reset unread count in the selected conversation object
         });
         if (message.conversationId) {
             setSelectedConversationId(message.conversationId);
         }
-    }, []);
+    }, [markConversationAsRead]);
 
     const handleBack = useCallback(() => {
         setSelectedConversation(null);

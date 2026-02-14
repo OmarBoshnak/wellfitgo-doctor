@@ -102,12 +102,12 @@ export const SocketService = {
         }
     },
 
-    offNewMessage: () => {
+    offNewMessage: (callback?: (message: any) => void) => {
         if (chatNamespace) {
-            chatNamespace.off('new_message');
+            chatNamespace.off('new_message', callback);
         }
         if (socket) {
-            socket.off('new_message');
+            socket.off('new_message', callback);
         }
     },
 
@@ -120,12 +120,12 @@ export const SocketService = {
         }
     },
 
-    offMessageEdited: () => {
+    offMessageEdited: (callback?: (data: any) => void) => {
         if (chatNamespace) {
-            chatNamespace.off('message_edited');
+            chatNamespace.off('message_edited', callback);
         }
         if (socket) {
-            socket.off('message_edited');
+            socket.off('message_edited', callback);
         }
     },
 
@@ -138,12 +138,12 @@ export const SocketService = {
         }
     },
 
-    offMessageDeleted: () => {
+    offMessageDeleted: (callback?: (data: any) => void) => {
         if (chatNamespace) {
-            chatNamespace.off('message_deleted');
+            chatNamespace.off('message_deleted', callback);
         }
         if (socket) {
-            socket.off('message_deleted');
+            socket.off('message_deleted', callback);
         }
     },
 
@@ -153,9 +153,9 @@ export const SocketService = {
         }
     },
 
-    offMessagesRead: () => {
+    offMessagesRead: (callback?: (data: any) => void) => {
         if (chatNamespace) {
-            chatNamespace.off('messages_read');
+            chatNamespace.off('messages_read', callback);
         }
     },
 

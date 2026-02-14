@@ -144,11 +144,14 @@ export const useClientsNeedingAttention = (limit: number) => {
         status: string;
         statusType: 'critical' | 'warning' | 'info';
         attentionType: 'late_message' | 'weight_gain' | 'missing_checkin';
+        attentionReason?: 'inactive' | 'weight_no_diet' | 'late_message';
         lastActive?: string;
         feeling?: string;
         weightChange?: number;
         lastMessageTime?: number;
         daysSinceCheckin?: number | null;
+        daysSinceActive?: number;
+        pendingMessageCount?: number;
     }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -194,8 +197,11 @@ export const useClientsNeedingAttention = (limit: number) => {
                     status: client.issueDescription,
                     statusType: statusTypeMap[client.severity] || 'info',
                     attentionType: attentionTypeMap[client.issue] || 'missing_checkin',
+                    attentionReason: client.attentionReason,
                     lastActive: client.lastActivity,
                     daysSinceCheckin,
+                    daysSinceActive: client.daysSinceActive,
+                    pendingMessageCount: client.pendingMessageCount,
                     weightChange: undefined,
                     feeling: undefined,
                     lastMessageTime: client.unreadMessages ? Date.now() : undefined,
