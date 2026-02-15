@@ -13,6 +13,8 @@ export default function DoctorLayout() {
             <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="diet-plans" options={{ headerShown: false }} />
+            <Stack.Screen name="sequences-list" options={{ headerShown: false }} />
+            <Stack.Screen name="sequence-editor" options={{ headerShown: false }} />
         </Stack>
     );
 }

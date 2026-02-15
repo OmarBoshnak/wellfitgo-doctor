@@ -25,6 +25,7 @@ import {
     ChevronLeft,
     ChevronDown,
     BarChart3,
+    Zap,
 } from 'lucide-react-native';
 import { colors } from '@/src/core/constants/Theme';
 import { isRTL } from '@/src/core/constants/translation';
@@ -72,6 +73,7 @@ const t = {
         ? 'ابدأ بإضافة عملاء لرؤية الإحصائيات'
         : 'Add clients to see analytics',
     noData: isRTL ? 'لا توجد بيانات' : 'No data',
+    automations: isRTL ? 'automation' : 'Automations',
 };
 
 // Day labels for chart (last 7 days dynamic)
@@ -222,11 +224,26 @@ export default function AnalyticsScreen() {
         <SafeAreaView edges={['left', 'right']} style={styles.container}>
             {/* Header */}
             <View>
-                <AnalyticsHeader 
-                    timeFilter={timeFilter} 
+                <AnalyticsHeader
+                    timeFilter={timeFilter}
                     onTimeFilterChange={setTimeFilter}
                 />
             </View>
+
+            {/* Automations Entry Point */}
+            <TouchableOpacity
+                style={styles.automationsBtn}
+                onPress={() => router.push('/doctor/sequences-list' as any)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.automationsBtnLeft}>
+                    <View style={styles.automationsIcon}>
+                        <Zap size={horizontalScale(18)} color={colors.primaryDark} />
+                    </View>
+                    <Text style={styles.automationsBtnText}>{t.automations}</Text>
+                </View>
+                <ChevronRight size={horizontalScale(18)} color={colors.textSecondary} />
+            </TouchableOpacity>
 
             <Animated.ScrollView
                 entering={FadeIn.duration(400)}
@@ -505,6 +522,41 @@ const styles = StyleSheet.create({
     activityTotalValue: {
         fontSize: ScaleFontSize(16),
         fontWeight: '700',
+        color: colors.textPrimary,
+    },
+    // Automations button
+    automationsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: colors.bgPrimary,
+        marginHorizontal: horizontalScale(16),
+        marginTop: verticalScale(12),
+        paddingHorizontal: horizontalScale(14),
+        paddingVertical: verticalScale(12),
+        borderRadius: horizontalScale(12),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    automationsBtnLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: horizontalScale(10),
+    },
+    automationsIcon: {
+        width: horizontalScale(36),
+        height: horizontalScale(36),
+        borderRadius: horizontalScale(10),
+        backgroundColor: 'rgba(80, 115, 254, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    automationsBtnText: {
+        fontSize: ScaleFontSize(15),
+        fontWeight: '600',
         color: colors.textPrimary,
     },
 });

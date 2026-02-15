@@ -17,7 +17,8 @@ const formatTimestamp = (dateString: string): string => {
 };
 
 const transformMessage = (backendMessage: Message, currentUserId?: string): ChatMessage => {
-    const isMe = backendMessage.senderId === currentUserId || backendMessage.senderRole === 'doctor';
+    const isSystem = backendMessage.senderRole === 'system';
+    const isMe = !isSystem && (backendMessage.senderId === currentUserId || backendMessage.senderRole === 'doctor');
 
     // Create replyTo object for legacy compatibility
     const replyTo = backendMessage.replyToId && backendMessage.replyToContent ? {
@@ -28,7 +29,8 @@ const transformMessage = (backendMessage: Message, currentUserId?: string): Chat
 
     return {
         id: backendMessage._id,
-        type: backendMessage.messageType === 'voice' ? 'audio' :
+        type: isSystem ? 'system' :
+            backendMessage.messageType === 'voice' ? 'audio' :
             backendMessage.messageType === 'text' ? 'text' :
                 backendMessage.messageType as any,
         sender: isMe ? 'me' : 'client',

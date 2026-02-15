@@ -15,7 +15,7 @@ export interface ChatMessage {
     replyToId?: string; // ID of the message being replied to
     replyToContent?: string; // Content of the replied message
     replyToSenderId?: string; // Sender ID of the replied message
-    replyToSenderRole?: 'doctor' | 'client'; // Role of the replied message sender
+    replyToSenderRole?: 'doctor' | 'client' | 'system'; // Role of the replied message sender
     replyTo?: {
         id: string;
         content: string;

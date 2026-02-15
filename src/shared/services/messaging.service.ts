@@ -22,7 +22,7 @@ export interface Message {
     _id: string;
     conversationId: string;
     senderId: string;
-    senderRole: 'doctor' | 'client';
+    senderRole: 'doctor' | 'client' | 'system';
     content: string;
     messageType: 'text' | 'voice' | 'image' | 'document';
     mediaUrl?: string;
