@@ -6,8 +6,31 @@ let socket: Socket | null = null;
 let doctorNamespace: Socket | null = null;
 let chatNamespace: Socket | null = null;
 
+// Connection state tracking
+let connectionState = {
+    mainConnected: false,
+    chatConnected: false,
+    doctorConnected: false,
+};
+
+const connectionListeners = new Set<() => void>();
+
+// Notify all listeners when connection state changes
+const notifyConnectionListeners = () => {
+    connectionListeners.forEach((listener) => listener());
+};
+
+// Check if messaging is ready (either chat or main socket connected)
+const isMessagingReady = () => {
+    return connectionState.chatConnected || connectionState.mainConnected;
+};
+
 export const SocketService = {
     connect: async () => {
+        if (socket && doctorNamespace && chatNamespace) {
+            return { socket, doctorNamespace, chatNamespace };
+        }
+
         const token = await AsyncStorage.getItem('token');
         if (!token) return;
 
@@ -32,7 +55,18 @@ export const SocketService = {
         });
 
         socket.on('connect', () => {
-            console.log('Socket Connected:', socket?.id);
+            console.log('[SocketService] Main socket connected:', socket?.id);
+            connectionState.mainConnected = true;
+            notifyConnectionListeners();
+            if (userId) {
+                socket?.emit('join_user_room', userId);
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('[SocketService] Main socket disconnected');
+            connectionState.mainConnected = false;
+            notifyConnectionListeners();
         });
 
         // Doctor Namespace
@@ -42,7 +76,15 @@ export const SocketService = {
         });
 
         doctorNamespace.on('connect', () => {
-            console.log('Doctor Namespace Connected:', doctorNamespace?.id);
+            console.log('[SocketService] Doctor namespace connected:', doctorNamespace?.id);
+            connectionState.doctorConnected = true;
+            notifyConnectionListeners();
+        });
+
+        doctorNamespace.on('disconnect', () => {
+            console.log('[SocketService] Doctor namespace disconnected');
+            connectionState.doctorConnected = false;
+            notifyConnectionListeners();
         });
 
         // Chat Namespace
@@ -52,8 +94,27 @@ export const SocketService = {
         });
 
         chatNamespace.on('connect', () => {
-            console.log('Chat Namespace Connected:', chatNamespace?.id);
+            console.log('[SocketService] Chat namespace connected:', chatNamespace?.id);
+            connectionState.chatConnected = true;
+            notifyConnectionListeners();
+            if (userId) {
+                chatNamespace?.emit('join_user_room', userId);
+            }
         });
+
+        chatNamespace.on('disconnect', () => {
+            console.log('[SocketService] Chat namespace disconnected');
+            connectionState.chatConnected = false;
+            notifyConnectionListeners();
+        });
+
+        if (userId && socket?.connected) {
+            socket.emit('join_user_room', userId);
+        }
+
+        if (userId && chatNamespace?.connected) {
+            chatNamespace.emit('join_user_room', userId);
+        }
 
         return { socket, doctorNamespace, chatNamespace };
     },
@@ -165,6 +226,18 @@ export const SocketService = {
         }
     },
 
+    onUserStatusUpdated: (callback: (data: any) => void) => {
+        if (socket) {
+            socket.on('user_status_updated', callback);
+        }
+    },
+
+    offUserStatusUpdated: (callback?: (data: any) => void) => {
+        if (socket) {
+            socket.off('user_status_updated', callback);
+        }
+    },
+
     offUserTyping: () => {
         if (chatNamespace) {
             chatNamespace.off('user_typing');
@@ -178,6 +251,11 @@ export const SocketService = {
         socket = null;
         doctorNamespace = null;
         chatNamespace = null;
+        // Reset connection state
+        connectionState.mainConnected = false;
+        connectionState.chatConnected = false;
+        connectionState.doctorConnected = false;
+        notifyConnectionListeners();
     },
 
     on: (event: string, callback: (data: any) => void) => {
@@ -196,4 +274,12 @@ export const SocketService = {
     getSocket: () => socket,
     getDoctorNamespace: () => doctorNamespace,
     getChatNamespace: () => chatNamespace,
+
+    // Connection state management
+    isMessagingReady,
+    onConnectionChange: (callback: () => void) => {
+        connectionListeners.add(callback);
+        return () => connectionListeners.delete(callback);
+    },
+    getConnectionState: () => ({ ...connectionState }),
 };

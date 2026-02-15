@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
     View,
     Text,
@@ -71,9 +71,20 @@ export default function MessagesScreen() {
     const [isSearchActive, setIsSearchActive] = useState(false);
 
     // Use hook for real-time inbox
-    const { conversations, isLoading, markConversationAsRead } = useCoachInbox(filterToInbox[activeFilter]);
+    const { conversations, isLoading, markConversationAsRead, refetch, initialized } = useCoachInbox(filterToInbox[activeFilter]);
 
-    // Transform Convex conversations to Message format for UI
+    useEffect(() => {
+        if (!selectedConversationId || !selectedConversation) return;
+        const match = conversations.find((conv) => conv.id === selectedConversationId);
+        if (!match) return;
+
+        if (match.isOnline !== selectedConversation.isOnline) {
+            setSelectedConversation((prev) =>
+                prev ? { ...prev, isOnline: match.isOnline } : prev
+            );
+        }
+    }, [conversations, selectedConversation, selectedConversationId]);
+
     const messages: Message[] = useMemo(() => {
         if (!conversations || conversations.length === 0) {
             return [];
@@ -120,8 +131,12 @@ export default function MessagesScreen() {
 
     const handleRefresh = useCallback(() => {
         setRefreshing(true);
-        setTimeout(() => setRefreshing(false), 500);
-    }, []);
+        Promise.resolve(refetch())
+            .catch((error) => {
+                console.warn('[Messages] Failed to refresh inbox:', error);
+            })
+            .finally(() => setRefreshing(false));
+    }, [refetch]);
 
     const handleMessagePress = useCallback((message: Message) => {
         console.log('Open chat:', message.id, message.name);
@@ -180,8 +195,8 @@ export default function MessagesScreen() {
         );
     }
 
-    // Show loading state
-    if (isLoading) {
+    // Show loading state (only on initial load)
+    if (isLoading && !initialized) {
         return (
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <SafeAreaView edges={['right', 'left']} style={styles.loadingcontainer}>

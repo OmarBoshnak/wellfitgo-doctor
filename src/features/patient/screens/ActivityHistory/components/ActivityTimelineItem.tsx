@@ -4,7 +4,7 @@ import { styles } from '../styles';
 import { getActorLabel } from '../translations';
 import { isRTL } from '@/src/core/constants/translation';
 
-// Activity item type from Convex
+// Activity item type from Mongdb
 export interface ActivityItem {
     id: string;
     type: 'weight' | 'meals' | 'message' | 'missed' | 'plan' | 'water';

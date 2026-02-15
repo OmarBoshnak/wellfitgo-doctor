@@ -403,7 +403,7 @@ export default function DietCategoriesGrid({
                 renderLoadingState()
             ) : (
                 <View style={styles.listContent}>
-                    {/* All Categories from Convex (including custom) */}
+                    {/* All Categories from Mongdb (including custom) */}
                     {categories && categories.length > 0 ? (
                         categories.map((category) => renderCategoryCard(category))
                     ) : (

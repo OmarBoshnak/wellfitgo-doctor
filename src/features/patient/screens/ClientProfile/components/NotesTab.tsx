@@ -33,7 +33,7 @@ interface NotesTabProps {
 // ============ COMPONENT ============
 
 export function NotesTab({clientId}: NotesTabProps) {
-    // Local state instead of Convex queries
+    // Local state instead of Mongdb queries
     const [notes, setNotes] = useState<Note[] | undefined>(undefined);
 
     // Fetch notes from backend

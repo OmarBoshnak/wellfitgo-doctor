@@ -17,7 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { doctorTranslations as t } from '@/src/i18n';
 import { horizontalScale, verticalScale } from '@/src/core/utils/scaling';
 
-// Import from new backend lib instead of Convex
+// Import from new backend lib instead of Mongdb
 import {
     useCurrentUser,
     useDashboardStats,
@@ -26,7 +26,6 @@ import {
     useTodaysAppointments,
     useWeeklyActivity,
     useRecentActivity,
-    useSocket,
 } from '@/src/lib';
 import { usePhoneCall } from '@/src/hooks/usePhoneCall';
 import { useUnreadNotificationCount } from '@/src/features/home/hooks/useNotifications';
@@ -54,10 +53,6 @@ export default function DoctorDashboard() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
-    // Ensure socket is connected for real-time updates
-    const { isConnected } = useSocket();
-
-    // Use new backend hooks instead of Convex
     const { user, refetch: refetchUser } = useCurrentUser();
     const { data: dashboardStats, refetch: refetchStats } = useDashboardStats();
     const userName = user?.firstName || 'Doctor';

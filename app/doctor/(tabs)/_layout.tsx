@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Users, UtensilsCrossed, MessageSquare, BarChart3, Home } from 'lucide-react-native';
 import { colors } from '@/src/core/constants/Theme';
@@ -6,6 +6,7 @@ import { View, Text, StyleSheet, Platform } from 'react-native';
 import { isRTL } from '@/src/core/constants/translation';
 import { horizontalScale, verticalScale, ScaleFontSize } from '@/src/core/utils/scaling';
 import { useUnreadCount } from '@/src/features/messaging';
+import { SocketService } from '@/src/shared/services/socket/socket.service';
 
 // Tab labels
 const tabLabels = {
@@ -39,6 +40,28 @@ function MessagesTabIcon({ color, size }: { color: string; size: number }) {
 }
 
 export default function TabsLayout() {
+    useEffect(() => {
+        let mounted = true;
+
+        console.log('[TabsLayout] Initiating socket connection...');
+        SocketService.connect()
+            .then(() => {
+                if (mounted) {
+                    console.log('[TabsLayout] Socket connection initiated successfully');
+                }
+            })
+            .catch((error) => {
+                console.warn('[TabsLayout] Socket connection failed:', error);
+                // Even on error, allow the app to continue (will work without real-time)
+            });
+
+        return () => {
+            mounted = false;
+            console.log('[TabsLayout] Disconnecting sockets...');
+            SocketService.disconnect();
+        };
+    }, []);
+
     return (
         <Tabs
             screenOptions={{

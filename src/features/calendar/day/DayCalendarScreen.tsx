@@ -78,7 +78,7 @@ export const DayCalendarScreen: React.FC = () => {
     const [selectedEvent, setSelectedEvent] = useState<any>(null);
     const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
     const [optimisticEvents, setOptimisticEvents] = useState<any[]>([]);
-    const [convexEvents, setConvexEvents] = useState<any[]>([]);
+    const [MongdbEvents, setMongdbEvents] = useState<any[]>([]);
     const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
     const [isProfileLoading, setIsProfileLoading] = useState(false);
     const clientProfileCache = useRef<Record<string, ClientProfile>>({});
@@ -98,10 +98,10 @@ export const DayCalendarScreen: React.FC = () => {
         try {
             const { appointmentService } = await import('@/src/shared/services/appointment.service');
             const data = await appointmentService.getAppointments(isoDate, isoDate);
-            setConvexEvents(data);
+            setMongdbEvents(data);
         } catch (error) {
             console.error('[DayCalendarScreen] Error fetching events:', error);
-            setConvexEvents([]);
+            setMongdbEvents([]);
         }
     }, [isoDate]);
 
@@ -172,8 +172,8 @@ export const DayCalendarScreen: React.FC = () => {
         };
     }, [showProfileModal, selectedClientId]);
 
-    // Combine Convex events with optimistic updates
-    const allEvents = [...(convexEvents || []), ...optimisticEvents];
+    // Combine Mongdb events with optimistic updates
+    const allEvents = [...(MongdbEvents || []), ...optimisticEvents];
 
     // Store raw events for edit modal
     const rawEventsByHour: Record<number, any> = {};
@@ -211,7 +211,7 @@ export const DayCalendarScreen: React.FC = () => {
         if (event.date === isoDate) {
             setOptimisticEvents((prev) => [...prev, event]);
 
-            // Clear optimistic events after Convex syncs (usually instant)
+            // Clear optimistic events after Mongdb syncs (usually instant)
             setTimeout(() => {
                 setOptimisticEvents([]);
             }, 2000);

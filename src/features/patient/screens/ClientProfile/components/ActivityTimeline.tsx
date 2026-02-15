@@ -6,7 +6,7 @@ import {styles} from '../styles';
 import {t} from '../translations';
 import {isRTL} from '@/src/core/constants/translation';
 
-// Activity interface matching Convex data
+// Activity interface matching Mongdb data
 interface Activity {
     id: string;
     type: "weight" | "meals" | "message" | "missed" | "plan" | "water";

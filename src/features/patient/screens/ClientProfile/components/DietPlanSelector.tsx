@@ -116,7 +116,7 @@ export function DietPlanSelector({
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false);
 
-    // Local state instead of Convex queries
+    // Local state instead of Mongdb queries
     const [dietPlans, setDietPlans] = useState<DietPlan[] | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(true);
 

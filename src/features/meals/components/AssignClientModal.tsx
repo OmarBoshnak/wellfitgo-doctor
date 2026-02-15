@@ -102,7 +102,7 @@ export default function AssignClientModal({ visible, diet, onClose, onAssign, on
     // Clients dropdown state
     const [showClientsPicker, setShowClientsPicker] = useState(true); // Show by default
 
-    // Local state for clients instead of Convex query
+    // Local state for clients instead of Mongdb query
     const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 

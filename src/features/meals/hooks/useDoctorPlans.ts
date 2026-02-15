@@ -7,7 +7,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { plansService } from "@/src/shared/services";
 
-// Lightweight Id replacement until Convex types are removed
+// Lightweight Id replacement until Mongdb types are removed
 export type Id<TableName extends string = string> = string & { __table?: TableName };
 
 // ============ TYPE DEFINITIONS ============

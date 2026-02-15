@@ -161,7 +161,7 @@ export const CalendarScreen: React.FC = () => {
     // Combine events with optimistic updates
     const allEvents = [...calendarEvents, ...optimisticEvents];
 
-    // Convert Convex events to CalendarEvents for rendering
+    // Convert Mongdb events to CalendarEvents for rendering
     const events: CalendarEvent[] = useMemo(() => {
         return allEvents.map(convertToCalendarEvent);
     }, [allEvents]);
@@ -182,11 +182,11 @@ export const CalendarScreen: React.FC = () => {
 
     // Handle event created - optimistic update
     const handleEventCreated = useCallback((event: any) => {
-        // Add to optimistic events (will be replaced by Convex on next query)
+        // Add to optimistic events (will be replaced by Mongdb on next query)
         setOptimisticEvents((prev) => [...prev, event]);
         setShowAddModal(false);
 
-        // Clear optimistic events after Convex syncs (usually instant)
+        // Clear optimistic events after Mongdb syncs (usually instant)
         setTimeout(() => {
             setOptimisticEvents([]);
         }, 2000);

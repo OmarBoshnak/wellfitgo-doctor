@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { styles } from '../styles';
 import { t } from '../translations';
 
-// Client interface matching Convex data
+// Client interface matching Mongdb data
 interface ClientData {
     id: string;
     name: string;

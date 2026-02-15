@@ -187,7 +187,7 @@ export default function FoodLibraryScreen({ onBack, onSelectFoods, categoryName 
     const commonlyUsedList = useCommonlyUsedFoods();
     const createCustomFood = useCreateCustomFood();
 
-    // Transform Convex foods to FoodItem format
+    // Transform Mongdb foods to FoodItem format
     const allFoods: FoodItem[] = useMemo(() => {
         // ...
         const source = foods || [];

@@ -159,7 +159,7 @@ export function MealPlanTab({clientId, clientName}: MealPlanTabProps) {
     };
 
     const handleDietSelectorSuccess = () => {
-        // Convex reactivity will auto-refresh the plans list
+        // Mongdb reactivity will auto-refresh the plans list
         // Modal closes automatically in DietPlanSelector
         setEditingPlanId(null);
     };

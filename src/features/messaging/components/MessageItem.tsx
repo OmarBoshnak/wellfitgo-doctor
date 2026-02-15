@@ -23,7 +23,7 @@ export interface Message {
     isOnline: boolean;
     category: 'client' | 'team';
     timestamp: string;
-    conversationId?: string; // Convex conversation ID
+    conversationId?: string; // Mongdb conversation ID
     clientId?: string; // Client user ID for profile navigation
     isPinned?: boolean;
     priority?: 'normal' | 'high' | 'urgent';

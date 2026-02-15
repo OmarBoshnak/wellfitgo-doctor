@@ -58,7 +58,7 @@ export default function PlansScreen() {
     const [showCreateCategoryModal, setShowCreateCategoryModal] = useState(false);
     const [categoriesRefreshKey, setCategoriesRefreshKey] = useState(0);
 
-    // ============ CONVEX DATA HOOKS ============
+    // ============ Mongdb DATA HOOKS ============
     const {
         activePlans,
         isLoading,
@@ -99,20 +99,20 @@ export default function PlansScreen() {
         description: string;
         autoGenerateRanges: boolean;
     }) => {
-        // Category is now created via Convex mutation in CreateCategoryModal
+        // Category is now created via Mongdb mutation in CreateCategoryModal
         // This callback is just for closing the modal
         setShowCreateCategoryModal(false);
     };
 
     const handleDeleteCategory = async (categoryId: string) => {
         // Custom categories have IDs prefixed with 'custom_'
-        // Extract the actual Convex ID and delete via mutation
+        // Extract the actual Mongdb ID and delete via mutation
         if (categoryId.startsWith('custom_')) {
-            const convexId = categoryId.replace('custom_', '');
+            const MongdbId = categoryId.replace('custom_', '');
             try {
                 // Note: The actual mutation call would need to be added here
                 // For now, the DietCategoriesGrid should handle the deletion via its own mutation
-                console.log('Delete category requested:', convexId);
+                console.log('Delete category requested:', MongdbId);
             } catch (error) {
                 console.error('Failed to delete category:', error);
             }

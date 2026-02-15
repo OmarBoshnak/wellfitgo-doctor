@@ -3,7 +3,7 @@ export interface ChatMessage {
     id: string;
     type: 'text' | 'audio' | 'system' | 'image' | 'meal_plan';
     sender: 'me' | 'client';
-    senderId?: string; // Convex user ID for ownership checks
+    senderId?: string; // Mongdb user ID for ownership checks
     content: string;
     createdAt?: string;
     timestamp: string;
@@ -25,7 +25,7 @@ export interface ChatMessage {
 
 export interface ChatConversation {
     id: string;
-    conversationId?: string; // Convex conversation ID
+    conversationId?: string; // Mongdb conversation ID
     clientId?: string; // Client user ID for profile navigation
     name: string;
     avatar: string;
